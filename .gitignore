@@ -1,0 +1,34 @@
+# Secretos — NUNCA se suben. Esta es la línea que protege tus llaves.
+.env
+.env.local
+.env*.local
+.env.production
+
+# Dependencias (se reinstalan solas con npm install)
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+next-env.d.ts
+
+# Vercel
+.vercel
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# Pruebas
+/coverage
