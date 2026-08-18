@@ -101,6 +101,32 @@ Es trabajo real que hay que presupuestar, no "aplicar el skin".
 
 ---
 
+## Qué quedó implementado el 2026-08-18
+
+Llegó un segundo paquete (`design_handoffs_bsp/design_system_bsp/`) con el
+Design System completo — tokens, las 10 reglas y los 14 componentes — y se
+aplicó a toda la app.
+
+| Pieza | Estado |
+|---|---|
+| `DESIGN.md` y `globals.css` con los tokens Modernist | Hecho |
+| Archivo como única familia, radius 0 blindado globalmente | Hecho |
+| Koma grid, medio tono, globos con cola, typing de 3 cuadros | Hecho |
+| "El porqué" como kicker rojo arriba del título | Hecho |
+| Dock móvil + hoja del hilo al 78% | Hecho |
+| Escritorio de dos columnas (chat tinta 430px + vitrina papel) | Hecho |
+| Overlay de carga con líneas de velocidad | **No** — sustituido por siluetas, ver D2 |
+| Tabs de capítulo (Inicio · Para ti · Calendario · Mi lista) | **No** — no hay vistas que enlazar todavía |
+| Bloque "Próximo episodio", calificación de 3 estados, ficha | **No** — viven en el panel de detalle, que es el paso 5 |
+
+**El dock cambió el reparto vertical del celular.** El acuerdo anterior era
+vitrina al 46% (tope 320px) y conversación abajo con dos mensajes visibles. El
+Design System define un dock con el último globo a dos líneas, y eso le da a la
+vitrina casi toda la pantalla. Se implementó como manda el sistema; el tope de
+320px de `experiencia-y-estados.md` §1 queda superado por esta decisión.
+
+---
+
 ## Orden acordado
 
 **Primero el chat con verificación, después el rediseño.** Maquillar una app que
