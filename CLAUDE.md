@@ -639,3 +639,40 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+---
+
+## Estado de la construcción (2026-08-18)
+
+**Lo que ya está hecho y verificado:**
+
+| Pieza | Estado |
+|---|---|
+| Repo | `github.com/rcoste/bsp`, todo subido |
+| Base de datos | 7 tablas cerradas (RLS sin políticas) + 3 funciones SQL. Probadas en vivo |
+| Capa de catálogo | `lib/anime/` con doble caché, freno y verificación de títulos. 21 pruebas en verde |
+| Catálogo semilla | 28 animes reales precargados en `catalogo_cache` |
+| Primera pantalla | Vitrina en modo selección + conversación. Navegable en localhost |
+
+**Cómo correr:** `npm run dev -- --port 3100` (el 3000 está ocupado por otra app en esta máquina).
+**Pruebas:** `node --test --experimental-strip-types tests/*.ts`
+**Scripts útiles:** `scripts/migrar.mjs`, `scripts/semilla-catalogo.mjs`, `scripts/verificar-db.mjs`
+
+**Lo que falta:**
+1. **La llave de Anthropic** (`ANTHROPIC_API_KEY` en `.env.local`, vacía). Sin ella el chat no piensa. Roberto la saca desde la tarjeta de Anthropic en su tablero de raicode.
+2. El chat con verificación (paso 3 del orden de construcción en `docs/plans/arquitectura.md` §9).
+3. Los paneles de detalle y "mi lista", memoria del gusto, candados de gasto, cuenta por correo.
+
+**Dos cosas que mordieron durante la construcción — no las reintroduzcas:**
+- **No metas efectos secundarios dentro de un updater de `useState`.** React los ejecuta dos veces en desarrollo y el estado se corrompe en silencio (perdimos el marcado de portadas y duplicamos un mensaje por esto).
+- **El buscador de Jikan se cae.** Devolvió 504 en 10 de 10 consultas durante la construcción, dos veces en dos días. El endpoint por id sí funciona. Por eso hay catálogo semilla y búsqueda local antes de salir a internet. **Nunca caches un resultado vacío cuando la fuente falló** — confunde "no pude buscar" con "no existe" durante 24 horas.
+
+## Entregable de diseño pendiente de decidir (`design_handoffs_bsp/`)
+
+Llegó un handoff de alta fidelidad ("skin manga", sistema Modernist) que **cambia el sistema visual completo** y **amplía el alcance**. Está guardado en el repo. Antes de implementarlo hay que resolver tres tensiones con lo acordado en planning — **no las decidas por tu cuenta, son de Roberto**:
+
+1. **Navegación por pestañas vs. una sola pantalla.** El handoff propone tabs (Inicio · Para ti · Calendario · Mi lista). El design doc rechazó la navegación por pestañas a favor de "una pantalla + paneles superpuestos", porque cambiar de pantalla rompe la conversación — que es la ventaja contra ChatGPT.
+2. **Tres vistas nuevas fuera del MVP**: Calendario semanal, Búsqueda y Ficha completa de serie. El alcance cerrado no las incluye. Son trabajo real, no detalles.
+3. **El diseño detallado es de escritorio** (dos columnas, 430px de chat). El acuerdo fue celular primero. El handoff dice respetar el layout móvil ya definido, pero no lo detalla.
+
+**Lo que el handoff SÍ alinea perfecto** (quien lo hizo leyó los documentos): el porqué de máx 90 caracteres con prohibición de "es muy popular", calificación de 3 estados, estado vacío con acción, encabezado ancla "Para: {lo pedido}", prohibido prometer cantidades, chips que comparten estado con el input, y auto-scroll solo si estabas al fondo.
