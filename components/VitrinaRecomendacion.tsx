@@ -1,16 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import type { Anime } from "@/lib/anime/catalogo";
+import { Portada } from "./Vitrina";
 
 export type Tarjeta = { anime: Anime; razon: string };
 
 /**
- * El modo recomendación de la vitrina: carrusel de una tarjeta grande con
- * media asomando a la derecha — el gesto que la gente ya hace en Netflix.
+ * El modo recomendación: tarjetas horizontales en koma grid.
  *
- * Tres tarjetas en fila en 375px darían ~110px cada una: portada de estampilla
- * y título cortado. Ver docs/designs/experiencia-y-estados.md §1 (decisión D3).
+ * El porqué va como kicker rojo ARRIBA del título, no como pie de foto: es lo
+ * primero que se lee, porque es lo que ninguna lista genérica puede darte.
+ * Ver DESIGN.md → "El porqué".
  */
 
 type Props = {
@@ -20,112 +20,95 @@ type Props = {
   onAbrir?: (anime: Anime) => void;
 };
 
-/** Las siluetas: del tamaño exacto de las reales, para que la pantalla no
- *  brinque cuando llegan. Ver §3.2. */
+/** Las siluetas, del tamaño exacto de las reales para que nada brinque. */
 function Siluetas() {
   return (
-    <ul className="flex gap-3 px-4 pb-3" aria-hidden>
-      {[0, 1].map((i) => (
-        <li
-          key={i}
-          className="shrink-0"
-          style={{ width: i === 0 ? "72%" : "22%" }}
-        >
+    <ul className="koma grid-cols-1 md:max-w-[860px] md:grid-cols-2" aria-hidden>
+      {[0, 1, 2].map((i) => (
+        <li key={i} className="koma-celda flex items-center gap-3 p-3">
           <div
-            className="w-[132px] animate-pulse rounded-[var(--radius-md)]"
-            style={{ aspectRatio: "2 / 3", backgroundColor: "var(--c-border)" }}
+            className="animate-pulse"
+            style={{ width: 84, aspectRatio: "2 / 3", background: "var(--c-neutral-300)" }}
           />
+          <div className="flex-1 space-y-2">
+            <div
+              className="h-[10px] w-2/5 animate-pulse"
+              style={{ background: "var(--c-neutral-300)" }}
+            />
+            <div
+              className="h-[14px] w-4/5 animate-pulse"
+              style={{ background: "var(--c-neutral-300)" }}
+            />
+          </div>
         </li>
       ))}
     </ul>
   );
 }
 
-export function VitrinaRecomendacion({
-  tarjetas,
-  ancla,
-  cargando,
-  onAbrir,
-}: Props) {
-  const soloUna = tarjetas.length === 1;
-
+export function VitrinaRecomendacion({ tarjetas, ancla, cargando, onAbrir }: Props) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="anim-view h-full overflow-y-auto overscroll-contain px-4 pb-4 md:px-6">
       {/* El encabezado ancla. Sin él, quien sube en la conversación ve un
           mensaje viejo junto a una vitrina nueva, y la app le está mintiendo. */}
-      {ancla && (
-        <p className="shrink-0 truncate px-4 pt-3 pb-2 text-[13px] text-muted">
-          Para: <span className="text-default">{ancla}</span>
-        </p>
-      )}
+      <p
+        className="kicker sticky top-0 z-10 pt-4 pb-2"
+        style={{ background: "var(--c-paper)", color: "var(--c-accent-700)" }}
+      >
+        Para: {ancla || "tus gustos"}
+      </p>
 
-      <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {cargando && tarjetas.length === 0 ? (
-          <Siluetas />
-        ) : (
-          <ul className="flex h-full snap-x snap-mandatory gap-3 px-4 pb-3">
-            {tarjetas.map(({ anime, razon }) => (
-              <li
-                key={anime.id}
-                className="h-full shrink-0 snap-start"
-                // Con un solo resultado la tarjeta ocupa el ancho completo y
-                // desaparece el asomo: si no, se ve rota.
-                style={{ width: soloUna ? "100%" : "72%" }}
+      {cargando && tarjetas.length === 0 ? (
+        <Siluetas />
+      ) : (
+        <ul className="koma grid-cols-1 md:max-w-[860px] md:grid-cols-2">
+          {tarjetas.map(({ anime, razon }, i) => (
+            <li
+              key={anime.id}
+              // Con un número impar de tarjetas la última ocupa las dos
+              // columnas: si no, la celda que sobra deja un bloque de tinta
+              // vacío que se lee como un error de carga.
+              className={`koma-celda ${
+                tarjetas.length % 2 === 1 && i === tarjetas.length - 1
+                  ? "md:col-span-2"
+                  : ""
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => onAbrir?.(anime)}
+                className="flex w-full items-center gap-3 p-3 text-left"
               >
-                <button
-                  type="button"
-                  onClick={() => onAbrir?.(anime)}
-                  className="flex h-full w-full items-center gap-3 text-left"
-                >
-                  {/* La portada lleva ancho fijo, no proporción contra el alto:
-                      con 2:3 sobre el alto completo se comía 213px de los 270
-                      que tiene la tarjeta y el texto quedaba en una columna de
-                      una palabra por renglón. */}
-                  <div
-                    className="relative w-[132px] shrink-0 overflow-hidden rounded-[var(--radius-md)] border"
-                    style={{
-                      aspectRatio: "2 / 3",
-                      borderColor: "var(--c-border)",
-                      backgroundColor: "var(--c-border)",
-                    }}
+                <Portada anime={anime} ancho={84} />
+                <span className="min-w-0 flex-1">
+                  {razon && (
+                    <span
+                      className="kicker mb-1 block"
+                      style={{ color: "var(--c-accent-700)" }}
+                    >
+                      {razon}
+                    </span>
+                  )}
+                  <span className="font-display line-clamp-2 block text-[15px] leading-tight">
+                    {anime.titulo}
+                  </span>
+                  <span
+                    className="mt-1 block text-[11px]"
+                    style={{ color: "var(--c-muted)" }}
                   >
-                    {anime.portada ? (
-                      <Image
-                        src={anime.portada}
-                        alt={anime.titulo}
-                        fill
-                        sizes="(max-width: 768px) 45vw, 200px"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      // Bloque sólido con el título: se ve intencional, no
-                      // averiado. Nunca un ícono roto.
-                      <span className="flex h-full items-center justify-center p-2 text-center text-[12px] text-muted">
-                        {anime.titulo}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 pr-1">
-                    <p className="font-display line-clamp-2 text-[14px] leading-tight text-default">
-                      {anime.titulo}
-                    </p>
-                    {razon && (
-                      <p className="line-clamp-3 text-[12px] leading-snug text-muted">
-                        {razon}
-                      </p>
-                    )}
-                    {anime.anio && (
-                      <p className="text-[11px] text-muted">{anime.anio}</p>
-                    )}
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                    {[
+                      anime.anio,
+                      anime.estado === "Currently Airing" ? "En emisión" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

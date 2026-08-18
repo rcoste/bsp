@@ -1,18 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Baloo_2, Nunito } from "next/font/google";
+import { Archivo } from "next/font/google";
 import "./globals.css";
 
-const display = Baloo_2({
+// Una sola familia en todo el sistema: Archivo. Headings 800, body 400/600.
+// Las dos variables apuntan a la misma fuente a propósito — así los
+// componentes siguen distinguiendo display de body sin abrir la puerta a una
+// segunda familia.
+const archivo = Archivo({
   subsets: ["latin"],
-  weight: ["500", "700", "800"],
-  variable: "--font-display",
-  display: "swap",
-});
-
-const body = Nunito({
-  subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  variable: "--font-body",
+  weight: ["400", "600", "800"],
+  style: ["normal", "italic"],
+  variable: "--font-archivo",
   display: "swap",
 });
 
@@ -29,10 +27,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5, // nunca 1: bloquear el zoom rompe la accesibilidad
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1020" },
-  ],
+  // La barra del navegador se pinta del color del panel de chat, que es lo
+  // que queda pegado al borde inferior en el celular.
+  themeColor: "#201e1d",
 };
 
 export default function RootLayout({
@@ -41,22 +38,15 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      data-theme="fresca"
-      className={`${display.variable} ${body.variable}`}
-      suppressHydrationWarning
+      className={archivo.variable}
+      style={
+        {
+          // next/font tiene que GANARLE a lo que declara el CSS.
+          "--font-display": "var(--font-archivo)",
+          "--font-body": "var(--font-archivo)",
+        } as React.CSSProperties
+      }
     >
-      <head>
-        {/*
-          Modo oscuro sin parpadeo: corre antes de pintar. Respeta la
-          preferencia del sistema en la primera visita y solo usa lo guardado
-          si la persona lo cambió a mano.
-        */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var g=localStorage.getItem('tema');var o=g?g==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(o)document.documentElement.classList.add('dark');}catch(e){}})();`,
-          }}
-        />
-      </head>
       <body>{children}</body>
     </html>
   );

@@ -5,15 +5,14 @@ import type { Anime } from "@/lib/anime/catalogo";
 import { leerEventos, type Turno } from "@/lib/chat/eventos";
 import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
-import { Conversacion } from "./Conversacion";
+import { Dock } from "./Dock";
 
 const CHIPS_INICIALES = [
   "Acabé una serie",
   "Algo corto para el finde",
   "Sorpréndeme",
 ];
-
-const SALUDO = "Dime qué acabas de ver y te digo qué sigue.";
+const SALUDO = "Dime qué acabas de ver y te digo qué sigue, nakama.";
 
 export function Pantalla({ animes }: { animes: Anime[] }) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
@@ -27,6 +26,18 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [mudo, setMudo] = useState(false);
   const [demo, setDemo] = useState(false);
+  const [saltado, setSaltado] = useState(false);
+
+  // El celular es el caso principal; escritorio es la variante. Un solo punto
+  // de quiebre, como manda el CLAUDE.md.
+  const [escritorio, setEscritorio] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const medir = () => setEscritorio(mq.matches);
+    medir();
+    mq.addEventListener("change", medir);
+    return () => mq.removeEventListener("change", medir);
+  }, []);
 
   // El hilo al día, fuera del estado. Existe para NO tener que meter la
   // llamada al servidor dentro de un updater de useState: React ejecuta los
@@ -53,7 +64,6 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
   }, []);
 
   // --- El texto aparece palabra por palabra -------------------------------
-  // Seis segundos de pantalla quieta se leen como app trabada. Ver §3.2.
   const buffer = useRef("");
   const reloj = useRef<number | null>(null);
 
@@ -120,7 +130,7 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
         });
 
         // El servidor avisa si contestó de mentira. Se dice en pantalla: si no,
-        // Roberto juzgaría la calidad de unas recomendaciones inventadas.
+        // se juzgaría la calidad de unas recomendaciones inventadas.
         if (respuesta.headers.get("X-BSP-Demo") === "1") setDemo(true);
 
         if (!respuesta.ok || !respuesta.body) {
@@ -191,9 +201,6 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
   // --- El arranque de gusto ----------------------------------------------
   function alternar(id: number) {
     // OJO: este updater tiene que ser PURO — solo calcular el nuevo estado.
-    // Meter aquí un setMensajes hacía que React (que ejecuta los updaters dos
-    // veces en desarrollo justo para cazar esto) aplicara el toggle dos veces
-    // y el marcado no se quedara, además de duplicar el mensaje.
     setMarcados((prev) => {
       const s = new Set(prev);
       if (s.has(id)) s.delete(id);
@@ -215,60 +222,118 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
     enviar(`Ya vi ${titulos}. ¿Qué me recomiendas?`);
   }, [marcados, animes, enviar]);
 
+  // El cambio de selección a recomendación ocurre UNA vez y no se revierte.
   const enRecomendacion =
-    tarjetas.length > 0 || (pensando && yaArranco.current);
+    tarjetas.length > 0 || saltado || (pensando && yaArranco.current);
 
+  const vitrina = enRecomendacion ? (
+    <VitrinaRecomendacion
+      tarjetas={tarjetas}
+      ancla={ancla}
+      cargando={pensando}
+    />
+  ) : (
+    <VitrinaSeleccion
+      animes={animes}
+      marcados={marcados}
+      onMarcar={alternar}
+      onSaltar={() => setSaltado(true)}
+    />
+  );
+
+  const avisoDemo = demo && (
+    <p
+      className="kicker shrink-0 px-4 py-[6px]"
+      style={{ background: "var(--c-ink)", color: "var(--c-accent-400)" }}
+      role="status"
+    >
+      Demo · respuestas de mentira, portadas reales
+    </p>
+  );
+
+  const chat = (
+    <Dock
+      escritorio={escritorio}
+      mensajes={mensajes}
+      chips={chips}
+      pensando={pensando}
+      onEnviar={enviar}
+      deshabilitado={mudo}
+      aviso={aviso ?? undefined}
+    />
+  );
+
+  // ESCRITORIO: dos columnas. El chat es tinta a la izquierda, la vitrina es
+  // papel a la derecha; ese contraste ES el layout. Las dos cabeceras miden
+  // exactamente 64px para que la regla de 2px corra continua entre paneles.
+  if (escritorio) {
+    return (
+      <main
+        className="flex h-screen overflow-hidden"
+        style={{ background: "var(--c-paper)" }}
+      >
+        {chat}
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header
+            className="flex shrink-0 items-center gap-[10px] px-6"
+            style={{ height: 64, borderBottom: "var(--borde-koma)" }}
+          >
+            <span
+              aria-hidden
+              className="h-[10px] w-[10px]"
+              style={{ background: "var(--c-accent)" }}
+            />
+            <span className="kicker">La vitrina</span>
+            {avisoDemo}
+          </header>
+          <section aria-label="Anime" className="min-h-0 flex-1">
+            {vitrina}
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  // CELULAR: la vitrina se queda con casi toda la pantalla y el chat vive en
+  // el dock de abajo, que se despliega en hoja cuando lo pides.
   return (
     <main
-      className="flex flex-col bg-app"
-      style={{ height: alto ? `${alto}px` : "100svh" }}
+      className="flex flex-col"
+      style={{
+        height: alto ? `${alto}px` : "100svh",
+        background: "var(--c-paper)",
+      }}
     >
-      {demo && (
-        <p
-          className="shrink-0 px-4 py-1.5 text-center text-[12px]"
-          style={{
-            backgroundColor: "var(--c-surface)",
-            color: "var(--c-text-muted)",
-          }}
-          role="status"
-        >
-          Modo demostración: las respuestas son de mentira, las portadas reales.
-        </p>
-      )}
-
-      {/* VITRINA — arriba, para que el teclado no la tape */}
-      <section
-        aria-label="Anime"
-        className="shrink-0 border-b"
-        style={{ height: "min(46%, 320px)", borderColor: "var(--c-border)" }}
+      <header
+        className="flex shrink-0 items-center gap-[10px] px-4"
+        style={{ height: 56, borderBottom: "var(--borde-koma)" }}
       >
-        {enRecomendacion ? (
-          <VitrinaRecomendacion
-            tarjetas={tarjetas}
-            ancla={ancla}
-            cargando={pensando}
-          />
-        ) : (
-          <VitrinaSeleccion
-            animes={animes}
-            marcados={marcados}
-            onMarcar={alternar}
-          />
-        )}
+        <span
+          aria-hidden
+          className="h-[14px] w-[14px]"
+          style={{ background: "var(--c-accent)" }}
+        />
+        <span className="font-display text-[22px] leading-none tracking-[-0.02em]">
+          BSP
+        </span>
+        <span className="text-[11px]" style={{ color: "var(--c-muted)" }}>
+          Tu universo otaku, en español
+        </span>
+        <span
+          className="kicker ml-auto px-[6px] py-[3px]"
+          style={{ border: "1px solid var(--c-ink)" }}
+        >
+          Beta
+        </span>
+      </header>
+
+      {avisoDemo}
+
+      <section aria-label="Anime" className="min-h-0 flex-1">
+        {vitrina}
       </section>
 
-      {/* CONVERSACIÓN — abajo, donde llega el pulgar */}
-      <section aria-label="Conversación" className="min-h-0 flex-1">
-        <Conversacion
-          mensajes={mensajes}
-          chips={chips}
-          onEnviar={enviar}
-          onChip={enviar}
-          pensando={pensando}
-          deshabilitado={mudo}
-          avisoDeshabilitado={aviso ?? undefined}
-        />
-      </section>
+      {chat}
     </main>
   );
 }

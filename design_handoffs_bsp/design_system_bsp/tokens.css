@@ -1,0 +1,49 @@
+/* BSP "Manga Modernist" — tokens. Fuente de verdad: DESIGN.md.
+   Los valores base provienen del sistema Modernist (styles.css incluido en este paquete);
+   aquí se exponen con nombres del proyecto para Tailwind v4 (@theme) o CSS vars directas. */
+:root {
+  /* color */
+  --c-paper: #f3f2f2;      /* fondo vitrina */
+  --c-ink: #201e1d;        /* texto, bordes koma, panel chat */
+  --c-surface: #ffffff;    /* cards, globos */
+  --c-accent: #ec3013;     /* acción primaria */
+  --c-accent-400: #f26a54; /* labels/hover sobre tinta */
+  --c-accent-600: #c92a10; /* hover/pressed sobre claro */
+  --c-accent-700: #b22410; /* texto rojo pequeño sobre claro */
+  --c-muted: #6f6b68;      /* metas, subtítulos (neutral-600) */
+  --c-neutral-300: #d9d7d5;/* fondos de portada fallback */
+  --c-neutral-500: #a5a19e;/* iniciales fallback */
+  --c-divider: #201e1d;    /* reglas fuertes: 2px sólido */
+  /* sobre tinta */
+  --c-on-ink: var(--c-paper);
+  --c-on-ink-border: color-mix(in srgb, var(--c-paper) 40%, transparent);
+  --c-on-ink-divider: color-mix(in srgb, var(--c-paper) 25%, transparent);
+
+  /* tipografía — una sola familia */
+  --font-display: 'Archivo', system-ui, sans-serif; /* 800; títulos de sección en itálica */
+  --font-body: 'Archivo', system-ui, sans-serif;    /* 400/600 */
+  --text-label: 10px;  /* uppercase, tracking .12-.16em, 800 */
+  --text-meta: 11px;
+  --text-chip: 12px;
+  --text-body: 14px;
+  --text-lead: 15px;
+  --text-h2: 20px;
+  --text-h1: 32px;     /* móvil: 20-22px */
+
+  /* forma */
+  --radius: 0px;                 /* en todo, sin excepciones */
+  --border-koma: 2px solid var(--c-ink);
+  --gap-koma: 2px;               /* rejilla de viñetas sobre fondo tinta */
+
+  /* motion */
+  --ease-view: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-view: 0.45s;   /* entrada de vista: fade + translateY(16px) */
+  --dur-msg: 0.25s;
+  --dur-sheet: 0.3s;
+  --dur-loading: 650ms;
+
+  /* texturas manga */
+  --halftone-cover: radial-gradient(rgba(32, 30, 29, 0.28) 1px, transparent 1px); /* size 4px, multiply */
+  --halftone-accent: radial-gradient(color-mix(in srgb, var(--c-paper) 30%, transparent) 1.2px, transparent 1.2px); /* size 7px */
+  --speedlines: repeating-linear-gradient(115deg, transparent 0 26px, color-mix(in srgb, var(--c-ink) 8%, transparent) 26px 28px);
+}

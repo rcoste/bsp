@@ -53,7 +53,7 @@ function guionPara(mensaje: string, eco: string): Guion {
       razones: (a) =>
         `Nadie lo pide y todos lo terminan${a.anio ? ` · ${a.anio}` : ""}`,
       texto:
-        "Te tiré el dado. Este no lo habrías buscado tú solo, y justamente por eso te lo pongo. Dale una oportunidad de tres episodios.",
+        "¡Tirada de dados del destino! Este no lo habrías buscado tú solo, nakama. Dale tres episodios.",
       chips: ["Otro distinto", "Algo más corto", "Más acción"],
     };
   }
@@ -69,7 +69,7 @@ function guionPara(mensaje: string, eco: string): Guion {
           "Empieza fuerte, no hay que aguantarle nada",
         ][i] ?? "",
       texto:
-        "Series que sí terminan, para que no te agarre el lunes a medio arco. Están en la vitrina.",
+        "Series que sí terminan, para que el lunes no te agarre a medio arco. ¡Mira la vitrina!",
       chips: ["Aún más corto", "Más acción", "Menos conocido"],
     };
   }
@@ -84,7 +84,7 @@ function guionPara(mensaje: string, eco: string): Guion {
           "Las peleas se sienten, no solo se ven",
           "Sube de intensidad y no baja",
         ][i] ?? "",
-      texto: "Modo pelea. Mira la vitrina, ahí tienes con qué.",
+      texto: "¡Modo batalla activado! Puños y gritos de poder en la vitrina.",
       chips: ["Algo más tranquilo", "Algo más corto", "Menos conocido"],
     };
   }
@@ -93,7 +93,7 @@ function guionPara(mensaje: string, eco: string): Guion {
     return {
       razones: () => "Joya que casi nadie menciona en las listas",
       texto:
-        "De las que no salen en los top 10 de YouTube. Si te gusta alguna, dime cuál y te sigo por ahí.",
+        "Joyas del archivo, de las que no salen en ningún top 10. Dime cuál te late y sigo por ahí.",
       chips: ["Más acción", "Algo más corto", "Sorpréndeme"],
     };
   }
@@ -102,7 +102,7 @@ function guionPara(mensaje: string, eco: string): Guion {
     return {
       razones: () => "",
       texto:
-        "Aquí ando. Dime qué acabaste de ver, o marca arriba un par de portadas y yo saco lo demás.",
+        "Aquí ando, nakama. Dime qué acabaste de ver, o marca un par de portadas y yo saco lo demás.",
       chips: ["Acabé una serie", "Algo corto para el finde", "Sorpréndeme"],
     };
   }
@@ -117,8 +117,8 @@ function guionPara(mensaje: string, eco: string): Guion {
         "La que casi nadie te va a nombrar",
       ][i] ?? "",
     texto: eco
-      ? `Si te enganchó ${eco}, esto es lo que sigue. Está en la vitrina.`
-      : "Con eso ya me hago una idea. Mira la vitrina.",
+      ? `Si te enganchó ${eco}, esto es lo que sigue. ¡A la vitrina!`
+      : "¡Yosh! Con eso ya me hago una idea. Mira la vitrina.",
     chips: ["Más acción", "Algo más corto", "Menos conocido"],
   };
 }
@@ -160,7 +160,7 @@ export async function conversarDemo({
   if (preguntaCual(mensaje, eco)) {
     await dormir(PENSANDO_MS);
     if (señal.aborted) return;
-    emitir({ tipo: "texto", texto: "¿Cuál acabaste? Dime el nombre y te digo qué sigue." });
+    emitir({ tipo: "texto", texto: "¿Cuál acabaste? Dime el nombre y te digo qué sigue, nakama." });
     return;
   }
 

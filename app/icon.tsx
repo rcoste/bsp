@@ -11,19 +11,20 @@ export default function Icon() {
     (
       <div
         style={{
-          fontSize: 20,
-          background: "#2563eb",
+          fontSize: 22,
+          background: "#ec3013",
           width: "100%",
           height: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "white",
-          borderRadius: 8,
+          color: "#f3f2f2",
+          // Radius 0 en todo, sin excepciones — también en el favicon.
+          borderRadius: 0,
           fontWeight: 800,
         }}
       >
-        b
+        B
       </div>
     ),
     { ...size },
