@@ -10,6 +10,7 @@ type Props = {
   chips: string[];
   onEnviar: (texto: string) => void;
   onChip: (texto: string) => void;
+  pensando?: boolean;
   deshabilitado?: boolean;
   avisoDeshabilitado?: string;
 };
@@ -19,6 +20,7 @@ export function Conversacion({
   chips,
   onEnviar,
   onChip,
+  pensando,
   deshabilitado,
   avisoDeshabilitado,
 }: Props) {
@@ -34,7 +36,7 @@ export function Conversacion({
     if (!hilo) return;
     const alFondo = hilo.scrollHeight - hilo.scrollTop - hilo.clientHeight < 100;
     if (alFondo) finRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [mensajes]);
+  }, [mensajes, pensando]);
 
   function enviar() {
     const limpio = texto.trim();
@@ -72,6 +74,26 @@ export function Conversacion({
             </li>
           ))}
         </ul>
+
+        {/* Que la AI está pensando: tres cuadros que parpadean. Sin esto, seis
+            segundos de pantalla quieta se leen como app trabada (§3.2). */}
+        {pensando && (
+          <p className="mt-3 flex items-center gap-1.5" role="status">
+            <span className="sr-only">Pensando</span>
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="h-1.5 w-1.5 animate-pulse rounded-full"
+                style={{
+                  backgroundColor: "var(--c-accent)",
+                  animationDelay: `${i * 0.15}s`,
+                }}
+                aria-hidden
+              />
+            ))}
+          </p>
+        )}
+
         <div ref={finRef} />
       </div>
 
