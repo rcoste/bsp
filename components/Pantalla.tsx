@@ -7,19 +7,33 @@ import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
 import { Conversacion } from "./Conversacion";
 
-const CHIPS_INICIALES = ["Acabé una serie", "Algo corto para el finde", "Sorpréndeme"];
+const CHIPS_INICIALES = [
+  "Acabé una serie",
+  "Algo corto para el finde",
+  "Sorpréndeme",
+];
 
 const SALUDO = "Dime qué acabas de ver y te digo qué sigue.";
 
 export function Pantalla({ animes }: { animes: Anime[] }) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
-  const [mensajes, setMensajes] = useState<Turno[]>([{ de: "ai", texto: SALUDO }]);
+  const [mensajes, setMensajes] = useState<Turno[]>([
+    { de: "ai", texto: SALUDO },
+  ]);
   const [tarjetas, setTarjetas] = useState<Tarjeta[]>([]);
   const [ancla, setAncla] = useState("");
   const [chips, setChips] = useState(CHIPS_INICIALES);
   const [pensando, setPensando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [mudo, setMudo] = useState(false);
+  const [demo, setDemo] = useState(false);
+
+  // El hilo al día, fuera del estado. Existe para NO tener que meter la
+  // llamada al servidor dentro de un updater de useState: React ejecuta los
+  // updaters dos veces en desarrollo, y eso disparaba DOS conversaciones a la
+  // vez — dos burbujas, el texto partido entre ellas y el doble de gasto.
+  const hilo = useRef<Turno[]>([]);
+  hilo.current = mensajes;
 
   // El teclado del celular no cambia el alto de la ventana en iOS, así que
   // 100vh miente. visualViewport sí dice el alto REAL disponible: sin esto,
@@ -68,7 +82,10 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
           const copia = [...previos];
           const ultimo = copia[copia.length - 1];
           if (ultimo?.de === "ai") {
-            copia[copia.length - 1] = { de: "ai", texto: ultimo.texto + palabra };
+            copia[copia.length - 1] = {
+              de: "ai",
+              texto: ultimo.texto + palabra,
+            };
           } else {
             copia.push({ de: "ai", texto: palabra });
           }
@@ -101,6 +118,10 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mensaje: texto, historial }),
         });
+
+        // El servidor avisa si contestó de mentira. Se dice en pantalla: si no,
+        // Roberto juzgaría la calidad de unas recomendaciones inventadas.
+        if (respuesta.headers.get("X-BSP-Demo") === "1") setDemo(true);
 
         if (!respuesta.ok || !respuesta.body) {
           const datos = await respuesta.json().catch(() => null);
@@ -144,12 +165,7 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
         setPensando(false);
         ocupado.current = false;
         const siguiente = cola.current.shift();
-        if (siguiente) {
-          setMensajes((m) => {
-            void hablar(siguiente, m);
-            return m;
-          });
-        }
+        if (siguiente) void hablar(siguiente, hilo.current);
       }
     },
     [revelar],
@@ -158,15 +174,16 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
   const enviar = useCallback(
     (texto: string) => {
       if (mudo) return;
+      const previos = hilo.current;
+      const conElTuyo: Turno[] = [...previos, { de: "tu", texto }];
+      hilo.current = conElTuyo;
+      setMensajes(conElTuyo);
+
       // El campo no se bloquea: si mandas un segundo mensaje se encola y sale
       // al terminar el turno. Encolar, no interrumpir — es lo que la gente ya
       // espera de WhatsApp.
-      setMensajes((previos) => {
-        const conElTuyo: Turno[] = [...previos, { de: "tu", texto }];
-        if (ocupado.current) cola.current.push(texto);
-        else void hablar(texto, previos);
-        return conElTuyo;
-      });
+      if (ocupado.current) cola.current.push(texto);
+      else void hablar(texto, previos);
     },
     [hablar, mudo],
   );
@@ -198,13 +215,27 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
     enviar(`Ya vi ${titulos}. ¿Qué me recomiendas?`);
   }, [marcados, animes, enviar]);
 
-  const enRecomendacion = tarjetas.length > 0 || (pensando && yaArranco.current);
+  const enRecomendacion =
+    tarjetas.length > 0 || (pensando && yaArranco.current);
 
   return (
     <main
       className="flex flex-col bg-app"
       style={{ height: alto ? `${alto}px` : "100svh" }}
     >
+      {demo && (
+        <p
+          className="shrink-0 px-4 py-1.5 text-center text-[12px]"
+          style={{
+            backgroundColor: "var(--c-surface)",
+            color: "var(--c-text-muted)",
+          }}
+          role="status"
+        >
+          Modo demostración: las respuestas son de mentira, las portadas reales.
+        </p>
+      )}
+
       {/* VITRINA — arriba, para que el teclado no la tape */}
       <section
         aria-label="Anime"
@@ -212,9 +243,17 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
         style={{ height: "min(46%, 320px)", borderColor: "var(--c-border)" }}
       >
         {enRecomendacion ? (
-          <VitrinaRecomendacion tarjetas={tarjetas} ancla={ancla} cargando={pensando} />
+          <VitrinaRecomendacion
+            tarjetas={tarjetas}
+            ancla={ancla}
+            cargando={pensando}
+          />
         ) : (
-          <VitrinaSeleccion animes={animes} marcados={marcados} onMarcar={alternar} />
+          <VitrinaSeleccion
+            animes={animes}
+            marcados={marcados}
+            onMarcar={alternar}
+          />
         )}
       </section>
 

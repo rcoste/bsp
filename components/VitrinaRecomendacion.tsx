@@ -26,9 +26,13 @@ function Siluetas() {
   return (
     <ul className="flex gap-3 px-4 pb-3" aria-hidden>
       {[0, 1].map((i) => (
-        <li key={i} className="shrink-0" style={{ width: i === 0 ? "72%" : "22%" }}>
+        <li
+          key={i}
+          className="shrink-0"
+          style={{ width: i === 0 ? "72%" : "22%" }}
+        >
           <div
-            className="w-full animate-pulse rounded-[var(--radius-md)]"
+            className="w-[132px] animate-pulse rounded-[var(--radius-md)]"
             style={{ aspectRatio: "2 / 3", backgroundColor: "var(--c-border)" }}
           />
         </li>
@@ -37,7 +41,12 @@ function Siluetas() {
   );
 }
 
-export function VitrinaRecomendacion({ tarjetas, ancla, cargando, onAbrir }: Props) {
+export function VitrinaRecomendacion({
+  tarjetas,
+  ancla,
+  cargando,
+  onAbrir,
+}: Props) {
   const soloUna = tarjetas.length === 1;
 
   return (
@@ -66,10 +75,14 @@ export function VitrinaRecomendacion({ tarjetas, ancla, cargando, onAbrir }: Pro
                 <button
                   type="button"
                   onClick={() => onAbrir?.(anime)}
-                  className="flex h-full w-full gap-3 text-left"
+                  className="flex h-full w-full items-center gap-3 text-left"
                 >
+                  {/* La portada lleva ancho fijo, no proporción contra el alto:
+                      con 2:3 sobre el alto completo se comía 213px de los 270
+                      que tiene la tarjeta y el texto quedaba en una columna de
+                      una palabra por renglón. */}
                   <div
-                    className="relative h-full shrink-0 overflow-hidden rounded-[var(--radius-md)] border"
+                    className="relative w-[132px] shrink-0 overflow-hidden rounded-[var(--radius-md)] border"
                     style={{
                       aspectRatio: "2 / 3",
                       borderColor: "var(--c-border)",
@@ -94,8 +107,8 @@ export function VitrinaRecomendacion({ tarjetas, ancla, cargando, onAbrir }: Pro
                     )}
                   </div>
 
-                  <div className="flex min-w-0 flex-col justify-center gap-1 pr-1">
-                    <p className="font-display line-clamp-3 text-[14px] leading-tight text-default">
+                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 pr-1">
+                    <p className="font-display line-clamp-2 text-[14px] leading-tight text-default">
                       {anime.titulo}
                     </p>
                     {razon && (

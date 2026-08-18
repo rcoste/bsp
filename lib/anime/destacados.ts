@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "../db.ts";
-import type { Anime } from "./catalogo.ts";
+import { soloSeisCampos, type Anime } from "./catalogo.ts";
 
 /**
  * Los animes del arranque de gusto: portadas muy conocidas que el usuario
@@ -18,12 +18,5 @@ export async function paraArranque(limite = 12): Promise<Anime[]> {
      order by anime_id
      limit ${limite}
   `;
-  return filas.map((f) => ({
-    id: f.datos.id,
-    titulo: f.datos.titulo,
-    tituloEn: f.datos.tituloEn,
-    anio: f.datos.anio,
-    estado: f.datos.estado,
-    portada: f.datos.portada,
-  }));
+  return filas.map((f) => soloSeisCampos(f.datos));
 }

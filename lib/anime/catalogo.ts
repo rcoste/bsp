@@ -40,6 +40,18 @@ type JikanAnime = {
   synopsis?: string | null;
 };
 
+/** Recorta cualquier registro del caché a los seis campos acordados. */
+export function soloSeisCampos(datos: Anime): Anime {
+  return {
+    id: datos.id,
+    titulo: datos.titulo,
+    tituloEn: datos.tituloEn,
+    anio: datos.anio,
+    estado: datos.estado,
+    portada: datos.portada,
+  };
+}
+
 function aAnime(j: JikanAnime): Anime {
   return {
     id: j.mal_id,
@@ -104,7 +116,10 @@ export async function porId(id: number): Promise<Anime | null> {
   const filas = await sql<{ datos: Anime }[]>`
     select datos from catalogo_cache where anime_id = ${id} and expira_en > now()
   `;
-  if (filas.length) return filas[0].datos;
+  // La fila guardada trae más de lo que promete el tipo (sinopsis, géneros,
+  // sinónimos). Se recorta a los seis campos: sin esto la sinopsis entera
+  // viaja al celular en cada tarjeta, y son ~1.5 KB por anime.
+  if (filas.length) return soloSeisCampos(filas[0].datos);
 
   const json = (await pedirAJikan(`/anime/${id}`)) as { data?: JikanAnime } | null;
   if (!json?.data) return null;

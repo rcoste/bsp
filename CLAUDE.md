@@ -654,6 +654,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | Catálogo semilla | 28 animes reales precargados en `catalogo_cache` |
 | Primera pantalla | Vitrina en modo selección + conversación. Navegable en localhost |
 | Chat con verificación | `lib/chat/` + `/api/chat`. Bucle con memoria intermedia, tarjetas antes que texto, 8 pruebas del candado |
+| Modo demo | `lib/chat/demo.ts`. Sin llave y fuera de producción, emite los mismos eventos con respuestas de mentira para poder juzgar la interfaz. **Se apaga solo en cuanto exista `ANTHROPIC_API_KEY`** — no hay nada que quitar después |
 
 **Cómo correr:** `npm run dev -- --port 3100` (el 3000 está ocupado por otra app en esta máquina).
 **Pruebas:** `node --test --experimental-strip-types --conditions=react-server --env-file=.env.local tests/*.ts`

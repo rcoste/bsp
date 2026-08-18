@@ -1,4 +1,5 @@
 import { conversar, hayLlave, type Evento, type Turno } from "@/lib/chat/bucle";
+import { conversarDemo, enDemo } from "@/lib/chat/demo";
 import { registrarError } from "@/lib/db";
 import { perfilDe } from "@/lib/perfil";
 import { NOMBRE_COOKIE, leerDispositivo, nuevoDispositivo } from "@/lib/sesion";
@@ -58,7 +59,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Mensaje inválido." }, { status: 400 });
   }
 
-  if (!hayLlave()) {
+  // Sin llave la app no se rompe: fuera de producción entra el modo demo, que
+  // emite los mismos eventos con respuestas de mentira para poder juzgar la
+  // interfaz. En producción sí es un error honesto.
+  const llave = hayLlave();
+  const demo = enDemo(llave);
+  if (!llave && !demo) {
     return Response.json(
       { error: "falta_llave", mensaje: "Todavía no tengo cerebro conectado." },
       { status: 503 },
@@ -81,8 +87,12 @@ export async function POST(request: Request) {
     ponerCookie = nuevo.cookie;
   }
 
+  // En demo no se cobran mensajes: nada cuesta, y gastar los 20 del día
+  // jugando con respuestas de mentira sería absurdo.
   try {
-    const veredicto = await cobrarMensaje(dispositivoId, direccionReal(request.headers));
+    const veredicto = demo
+      ? ({ permitido: true, usados: 0 } as const)
+      : await cobrarMensaje(dispositivoId, direccionReal(request.headers));
     if (!veredicto.permitido) {
       return Response.json(
         {
@@ -100,11 +110,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "servidor" }, { status: 500 });
   }
 
-  const perfil = await perfilDe(dispositivoId).catch(async (error) => {
-    // Que no se pueda leer el gusto degrada la respuesta; no la tumba.
-    await registrarError("/api/chat:perfil", error, { dispositivoId });
-    return "";
-  });
+  const perfil = demo
+    ? ""
+    : // Que no se pueda leer el gusto degrada la respuesta; no la tumba.
+      await perfilDe(dispositivoId).catch(async (error) => {
+        await registrarError("/api/chat:perfil", error, { dispositivoId });
+        return "";
+      });
 
   const codificador = new TextEncoder();
   const flujo = new ReadableStream({
@@ -116,13 +128,22 @@ export async function POST(request: Request) {
       };
 
       try {
-        await conversar({
-          historial: cuerpo.historial,
-          mensaje: cuerpo.mensaje,
-          perfil,
-          emitir,
-          señal: request.signal,
-        });
+        if (demo) {
+          await conversarDemo({
+            historial: cuerpo.historial,
+            mensaje: cuerpo.mensaje,
+            emitir,
+            señal: request.signal,
+          });
+        } else {
+          await conversar({
+            historial: cuerpo.historial,
+            mensaje: cuerpo.mensaje,
+            perfil,
+            emitir,
+            señal: request.signal,
+          });
+        }
         emitir({ tipo: "fin" });
       } catch (error) {
         // Si el usuario cerró la pestaña no es un error que valga registrar.
@@ -144,6 +165,7 @@ export async function POST(request: Request) {
     "Cache-Control": "no-cache, no-transform",
     Connection: "keep-alive",
   });
+  if (demo) cabeceras.set("X-BSP-Demo", "1");
   if (ponerCookie) cabeceras.append("Set-Cookie", ponerCookie);
 
   return new Response(flujo, { headers: cabeceras });
