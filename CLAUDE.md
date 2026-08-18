@@ -675,4 +675,8 @@ Llegó un handoff de alta fidelidad ("skin manga", sistema Modernist) que **camb
 2. **Tres vistas nuevas fuera del MVP**: Calendario semanal, Búsqueda y Ficha completa de serie. El alcance cerrado no las incluye. Son trabajo real, no detalles.
 3. **El diseño detallado es de escritorio** (dos columnas, 430px de chat). El acuerdo fue celular primero. El handoff dice respetar el layout móvil ya definido, pero no lo detalla.
 
+**⚠️ El bundle llegó incompleto — no intentes abrir el prototipo esperando verlo funcionar.** Faltan dos archivos de JavaScript (`support.js` y `_ds/modernist-*/\_ds_bundle.js`), así que el HTML se abre pero muestra las plantillas sin rellenar (`{{ m.text }}`, `{{ quip }}`). La hoja de estilos sí estaba, solo en la ruta equivocada — ya se copió a donde el HTML la busca, así que colores y tipografía sí se ven.
+
+**Cómo trabajar el diseño de todos modos:** el `README.md` del handoff es excepcionalmente detallado (tokens exactos, medidas, comportamiento por vista, animaciones). Alcanza para implementar sin ver el prototipo corriendo. Si Roberto quiere verlo funcionando, tiene que pedirle a raicode el bundle completo con los dos archivos JS.
+
 **Lo que el handoff SÍ alinea perfecto** (quien lo hizo leyó los documentos): el porqué de máx 90 caracteres con prohibición de "es muy popular", calificación de 3 estados, estado vacío con acción, encabezado ancla "Para: {lo pedido}", prohibido prometer cantidades, chips que comparten estado con el input, y auto-scroll solo si estabas al fondo.
