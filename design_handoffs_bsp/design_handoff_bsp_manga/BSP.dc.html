@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/modernist-3e42f0f8-26ff-4623-acdf-bf8de220e0eb/styles.css">
+  <script src="_ds/modernist-3e42f0f8-26ff-4623-acdf-bf8de220e0eb/_ds_bundle.js"></script>
+  <style>
+    html, body { height: 100%; }
+    body { margin: 0; overflow: hidden; }
+    a { color: var(--color-accent); }
+    a:hover { color: var(--color-accent-600); }
+    @keyframes viewIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+    @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes slideBar { 0% { left: -40%; } 100% { left: 100%; } }
+    @keyframes blink { 0%, 80%, 100% { opacity: 0.2; } 40% { opacity: 1; } }
+  </style>
+</helmet>
+<div style="display: flex; height: 100vh; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body)">
+  <aside data-screen-label="Chat" style="width: 430px; flex: none; display: flex; flex-direction: column; border-right: 2px solid var(--color-divider); min-height: 0">
+    <header style="display: flex; align-items: baseline; gap: 10px; padding: 18px 20px; border-bottom: 2px solid var(--color-divider)">
+      <div style="width: 14px; height: 14px; background: var(--color-accent); align-self: center"></div>
+      <div style="font-family: var(--font-heading); font-weight: 800; font-size: 22px; letter-spacing: -0.02em">BSP</div>
+      <div style="font-size: 11px; color: var(--color-neutral-600)">Tu universo otaku, en español</div>
+      <span class="tag tag-outline" style="margin-left: auto">BETA</span>
+    </header>
+    <div ref="{{ chatRef }}" style="flex: 1; overflow-y: auto; min-height: 0">
+      <sc-for list="{{ messages }}" as="m" hint-placeholder-count="2">
+        <div style="animation: msgIn 0.25s ease">
+          <sc-if value="{{ m.isBot }}" hint-placeholder-val="{{ true }}">
+            <div style="padding: 14px 20px; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent)">
+              <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 800; color: var(--color-accent); margin-bottom: 5px; font-family: var(--font-heading)">{{ m.who }}</div>
+              <sc-if value="{{ m.typing }}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 5px; padding: 4px 0">
+                  <span style="display: inline-block; width: 6px; height: 6px; background: var(--color-accent); animation: blink 1s infinite"></span>
+                  <span style="display: inline-block; width: 6px; height: 6px; background: var(--color-accent); animation: blink 1s infinite; animation-delay: 0.15s"></span>
+                  <span style="display: inline-block; width: 6px; height: 6px; background: var(--color-accent); animation: blink 1s infinite; animation-delay: 0.3s"></span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ m.showText }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size: 14px; line-height: 1.55">{{ m.text }}</div>
+              </sc-if>
+            </div>
+          </sc-if>
+          <sc-if value="{{ m.isUser }}" hint-placeholder-val="{{ false }}">
+            <div style="padding: 14px 20px 14px 44px; border-bottom: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent); background: var(--color-surface)">
+              <div style="font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 800; color: var(--color-neutral-600); margin-bottom: 5px; font-family: var(--font-heading)">{{ m.who }}</div>
+              <div style="font-size: 14px; line-height: 1.55; font-weight: 600">{{ m.text }}</div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ showChips }}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 20px; border-top: 2px solid var(--color-divider)">
+        <sc-for list="{{ chips }}" as="ch" hint-placeholder-count="3">
+          <button class="btn btn-secondary" onClick="{{ ch.click }}" style="font-size: 12px; padding: 5px 10px; white-space: nowrap; flex: none">{{ ch.label }}</button>
+        </sc-for>
+      </div>
+    </sc-if>
+    <div style="display: flex; gap: 8px; padding: 12px 20px 18px; border-top: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent)">
+      <input class="input" placeholder="Acabé una serie, ¿qué sigo?" value="{{ input }}" onChange="{{ onInput }}" onKeyDown="{{ onKey }}">
+      <button class="btn btn-secondary" onClick="{{ openLista }}" style="white-space: nowrap; flex: none">Mi lista · {{ listaCount }}</button>
+      <button class="btn btn-primary btn-icon" onClick="{{ onSend }}" aria-label="Enviar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><path d="M5 12h14M13 5l7 7-7 7"></path></svg>
+      </button>
+    </div>
+  </aside>
+  <main style="flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0">
+    <header style="display: flex; align-items: baseline; justify-content: space-between; padding: 18px 40px; border-bottom: 2px solid var(--color-divider)">
+      <div style="display: flex; align-items: baseline; gap: 12px">
+        <span style="font-size: 10px; letter-spacing: 0.14em; font-weight: 800; color: var(--color-accent); font-family: var(--font-heading)">VITRINA</span>
+        <span style="font-family: var(--font-heading); font-weight: 800; font-size: 14px; letter-spacing: 0.06em">{{ headerLabel }}</span>
+      </div>
+      <span style="font-size: 11px; color: var(--color-neutral-600); letter-spacing: 0.1em">EN VIVO · ES</span>
+    </header>
+    <div style="position: relative; flex: 1; min-height: 0">
+      <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+        <div style="position: absolute; inset: 0; z-index: 5; background: var(--color-bg); display: flex; flex-direction: column; justify-content: center; padding: 48px; gap: 18px">
+          <div style="font-size: 10px; letter-spacing: 0.16em; color: var(--color-accent); font-weight: 800; font-family: var(--font-heading)">CARGANDO</div>
+          <div style="font-family: var(--font-heading); font-weight: 800; font-size: 32px; line-height: 1.1; letter-spacing: -0.015em; max-width: 540px">{{ quip }}</div>
+          <div style="width: 280px; height: 3px; background: var(--color-neutral-300); overflow: hidden; position: relative">
+            <div style="position: absolute; top: 0; width: 40%; height: 100%; background: var(--color-accent); animation: slideBar 0.9s linear infinite"></div>
+          </div>
+        </div>
+      </sc-if>
+      <div style="height: 100%; overflow-y: auto">
+        <sc-if value="{{ isOb }}" hint-placeholder-val="{{ true }}">
+          <section data-screen-label="Selección de gustos" style="padding: 44px 40px; animation: viewIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1)">
+            <div style="font-size: 10px; letter-spacing: 0.16em; color: var(--color-accent); font-weight: 800; font-family: var(--font-heading); margin-bottom: 12px">VITRINA · MODO SELECCIÓN</div>
+            <h1 style="font-size: 40px; max-width: 620px; margin-bottom: 10px">¿Cuál de estos has visto?</h1>
+            <p class="text-muted" style="max-width: 540px; font-size: 15px">Marca las que ya viste. Al tercer toque, Sen Pai arranca solo con lo que ya sabe de ti. <a href="#" onClick="{{ obSkip }}">Saltar</a></p>
+            <hr class="hr" style="margin: 24px 0 20px">
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px">
+              <sc-for list="{{ obSeries }}" as="c" hint-placeholder-count="10">
+                <div onClick="{{ c.click }}" role="button" aria-pressed="{{ c.on }}" style="background: var(--color-surface); cursor: pointer; outline: {{ c.border }}; outline-offset: -2px; position: relative" style-hover="background: var(--color-neutral-200)">
+                  <sc-if value="{{ c.on }}" hint-placeholder-val="{{ false }}">
+                    <div style="position: absolute; top: 6px; right: 6px; width: 22px; height: 22px; background: var(--color-accent); color: var(--color-bg); display: flex; align-items: center; justify-content: center; z-index: 2">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"></path></svg>
+                    </div>
+                  </sc-if>
+                  <div style="aspect-ratio: 2 / 3; position: relative; background: var(--color-neutral-300); display: flex; align-items: flex-end; padding: 8px; font-family: var(--font-heading); font-weight: 800; font-size: 30px; line-height: 0.9; color: var(--color-neutral-500)">{{ c.ini }}<sc-if value="{{ c.hasImg }}" hint-placeholder-val="{{ false }}"><div role="img" aria-label="{{ c.t }}" style="position: absolute; inset: 0; background-image: {{ c.bgimg }}; background-size: cover; background-position: center; filter: {{ c.cfilter }}"></div></sc-if></div>
+                  <div style="padding: 8px; font-weight: 800; font-size: 11px; font-family: var(--font-heading); line-height: 1.2">{{ c.t }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <span class="text-muted" style="font-size: 12px">{{ obCount }}</span>
+          </section>
+        </sc-if>
+        <sc-if value="{{ isInicio }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Inicio" style="padding: 44px 40px; animation: viewIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1)">
+            <div style="font-size: 10px; letter-spacing: 0.16em; color: var(--color-accent); font-weight: 800; font-family: var(--font-heading); margin-bottom: 12px">BSP · BASE DE SERIES EN ESPAÑOL</div>
+            <h1 style="font-size: 44px; max-width: 620px; margin-bottom: 12px">Tu universo otaku. En tu idioma.</h1>
+            <p class="text-muted" style="max-width: 520px; font-size: 15px">Pídele a Sen Pai una recomendación, califica lo que ya viste o revisa cuándo cae el próximo episodio. Todo desde el chat, todo en esta pantalla.</p>
+            <hr class="hr" style="margin: 28px 0 20px">
+            <h6 style="margin-bottom: 14px">En tendencia hoy</h6>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--color-divider); border: 2px solid var(--color-divider)">
+              <sc-for list="{{ trending }}" as="c" hint-placeholder-count="6">
+                <div onClick="{{ c.open }}" style="background: var(--color-surface); cursor: pointer; display: flex; flex-direction: column" style-hover="background: var(--color-neutral-200)">
+                  <div style="aspect-ratio: 3 / 4; position: relative; background: var(--color-neutral-300); display: flex; align-items: flex-end; padding: 12px; font-family: var(--font-heading); font-weight: 800; font-size: 54px; line-height: 0.9; letter-spacing: -0.03em; color: var(--color-neutral-500)">{{ c.ini }}<sc-if value="{{ c.hasImg }}" hint-placeholder-val="{{ false }}"><div role="img" aria-label="{{ c.t }}" style="position: absolute; inset: 0; background-image: {{ c.bgimg }}; background-size: cover; background-position: center; filter: {{ c.cfilter }}"></div></sc-if></div>
+                  <div style="padding: 12px; display: flex; flex-direction: column; gap: 4px">
+                    <div style="font-weight: 800; font-size: 13px; font-family: var(--font-heading); line-height: 1.2">{{ c.t }}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+                      <span style="font-size: 11px; color: var(--color-neutral-600)">{{ c.meta }}</span>
+                      <span style="font-size: 11px; font-weight: 800; color: var(--color-accent-700); flex: none">★ {{ c.score }}</span>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+        <sc-if value="{{ isRecs }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Recomendaciones" style="padding: 44px 40px; animation: viewIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1)">
+            <h6 style="color: var(--color-accent); margin-bottom: 4px">Para: {{ recsPara }}</h6>
+            <h2 style="margin-bottom: 6px">Elegidas para ti</h2>
+            <p class="text-muted" style="font-size: 14px; margin-bottom: 24px">Solo títulos verificados del catálogo. Cero relleno, palabra de Sen Pai.</p>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2px; background: var(--color-divider); border: 2px solid var(--color-divider)">
+              <sc-for list="{{ recs }}" as="c" hint-placeholder-count="4">
+                <div onClick="{{ c.open }}" style="display: flex; gap: 14px; background: var(--color-surface); padding: 16px; cursor: pointer" style-hover="background: var(--color-neutral-200)">
+                  <div style="width: 84px; flex: none; aspect-ratio: 2 / 3; position: relative; background: var(--color-neutral-300); display: flex; align-items: flex-end; padding: 8px; font-family: var(--font-heading); font-weight: 800; font-size: 26px; color: var(--color-neutral-500)">{{ c.ini }}<sc-if value="{{ c.hasImg }}" hint-placeholder-val="{{ false }}"><div role="img" aria-label="{{ c.t }}" style="position: absolute; inset: 0; background-image: {{ c.bgimg }}; background-size: cover; background-position: center; filter: {{ c.cfilter }}"></div></sc-if></div>
+                  <div style="display: flex; flex-direction: column; gap: 5px; min-width: 0">
+                    <div style="font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent); font-weight: 800; font-family: var(--font-heading)">{{ c.reason }}</div>
+                    <div style="font-family: var(--font-heading); font-weight: 800; font-size: 16px; line-height: 1.15">{{ c.t }}</div>
+                    <div style="font-size: 12px; color: var(--color-neutral-600)">{{ c.meta }} · {{ c.status }}</div>
+                    <div style="font-size: 12px; font-weight: 800; color: var(--color-accent-700); margin-top: auto">★ {{ c.score }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </section>
+        </sc-if>
+        <sc-if value="{{ isSerie }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Ficha de serie" style="padding: 44px 40px; animation: viewIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1); display: grid; grid-template-columns: 280px 1fr; gap: 36px; align-items: start">
+            <div style="display: flex; flex-direction: column; gap: 2px">
+              <div style="aspect-ratio: 2 / 3; position: relative; background: var(--color-neutral-300); display: flex; align-items: flex-end; padding: 18px; font-family: var(--font-heading); font-weight: 800; font-size: 88px; line-height: 0.9; letter-spacing: -0.04em; color: var(--color-neutral-500)">{{ s.ini }}<sc-if value="{{ s.hasImg }}" hint-placeholder-val="{{ false }}"><div role="img" aria-label="{{ s.t }}" style="position: absolute; inset: 0; background-image: {{ s.bgimg }}; background-size: cover; background-position: center; filter: {{ s.cfilter }}"></div></sc-if></div>
+              <sc-if value="{{ s.hasNext }}" hint-placeholder-val="{{ false }}">
+                <div style="background: var(--color-accent); color: var(--color-bg); padding: 14px 16px">
+                  <div style="font-size: 10px; letter-spacing: 0.14em; font-weight: 800; font-family: var(--font-heading); margin-bottom: 4px">PRÓXIMO EPISODIO</div>
+                  <div style="font-family: var(--font-heading); font-weight: 800; font-size: 15px">{{ s.next }}</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="min-width: 0">
+              <div style="font-size: 10px; letter-spacing: 0.14em; color: var(--color-accent); font-weight: 800; font-family: var(--font-heading); margin-bottom: 8px">{{ s.kicker }}</div>
+              <h1 style="font-size: 38px; margin-bottom: 8px">{{ s.t }}</h1>
+              <div class="text-muted" style="font-size: 13px; margin-bottom: 16px">{{ s.meta }}</div>
+              <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 16px">
+                <span style="font-family: var(--font-heading); font-weight: 800; font-size: 42px; color: var(--color-accent-700)">{{ s.score }}</span>
+                <span style="font-size: 11px; letter-spacing: 0.1em; color: var(--color-neutral-600)">/10 · COMUNIDAD</span>
+              </div>
+              <p style="font-size: 15px; max-width: 560px">{{ s.syn }}</p>
+              <hr class="hr" style="margin: 20px 0">
+              <div style="display: flex; flex-direction: column; gap: 16px; max-width: 560px">
+                <button class="btn btn-secondary" onClick="{{ s.toggleMark }}" style="align-self: flex-start">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                  {{ s.markLabel }}
+                </button>
+                <div>
+                  <div style="font-size: 10px; letter-spacing: 0.14em; font-weight: 800; font-family: var(--font-heading); margin-bottom: 8px">TU OPINIÓN</div>
+                  <div style="display: flex; gap: 2px; align-items: center">
+                    <sc-for list="{{ s.opts }}" as="o" hint-placeholder-count="3">
+                      <button onClick="{{ o.click }}" style="border: 1px solid var(--color-divider); background: {{ o.bg }}; color: {{ o.fg }}; font-family: var(--font-heading); font-weight: 800; font-size: 12px; padding: 8px 14px; cursor: pointer" style-hover="border-color: var(--color-accent)">{{ o.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+              <hr class="hr" style="margin: 20px 0">
+              <h6 style="margin-bottom: 10px">Últimos episodios</h6>
+              <table class="table" style="max-width: 560px">
+                <tbody>
+                  <sc-for list="{{ s.epRows }}" as="e" hint-placeholder-count="3">
+                    <tr>
+                      <td style="font-weight: 600">{{ e.n }}</td>
+                      <td style="text-align: right; color: var(--color-neutral-600)">{{ e.d }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </sc-if>
+        <sc-if value="{{ isCal }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Calendario" style="padding: 44px 40px; animation: viewIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1)">
+            <h6 style="color: var(--color-accent); margin-bottom: 4px">Calendario</h6>
+            <h2 style="margin-bottom: 24px">Esta semana en emisión</h2>
+            <sc-for list="{{ calDays }}" as="d" hint-placeholder-count="3">
+              <div style="border-top: 2px solid var(--color-divider); padding: 14px 0 20px">
+                <div style="font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 800; font-family: var(--font-heading); margin-bottom: 10px">{{ d.day }}</div>
+                <div style="display: flex; flex-direction: column; gap: 2px">
+                  <sc-for list="{{ d.items }}" as="it" hint-placeholder-count="1">
+                    <div onClick="{{ it.open }}" style="display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--color-surface); padding: 12px 16px; cursor: pointer" style-hover="background: var(--color-neutral-200)">
+                      <span style="font-weight: 800; font-family: var(--font-heading); font-size: 14px">{{ it.t }}</span>
+                      <span style="display: flex; gap: 12px; align-items: center">
+                        <span style="font-size: 12px; color: var(--color-neutral-600)">{{ it.ep }}</span>
+                        <span class="tag tag-accent">NUEVO</span>
+                      </span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </section>
+        </sc-if>
+        <sc-if value="{{ isLista }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Mi lista" style="padding: 44px 40px; animation: viewIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1)">
+            <h6 style="color: var(--color-accent); margin-bottom: 4px">Mi lista</h6>
+            <h2 style="margin-bottom: 24px">Tu colección</h2>
+            <sc-if value="{{ hasList }}" hint-placeholder-val="{{ true }}">
+              <table class="table">
+                <thead>
+                  <tr><th>Título</th><th>Estado</th><th>Tu opinión</th><th></th></tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ listRows }}" as="r" hint-placeholder-count="3">
+                    <tr>
+                      <td><span onClick="{{ r.open }}" style="font-weight: 800; font-family: var(--font-heading); cursor: pointer" style-hover="color: var(--color-accent)">{{ r.t }}</span></td>
+                      <td>{{ r.status }}</td>
+                      <td style="font-weight: 800">{{ r.nota }}</td>
+                      <td style="text-align: right"><button class="btn btn-ghost" onClick="{{ r.remove }}" style="font-size: 12px">Quitar</button></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </sc-if>
+            <sc-if value="{{ listEmpty }}" hint-placeholder-val="{{ false }}">
+              <div style="max-width: 420px">
+                <h4 style="margin-bottom: 8px">Tu lista está en blanco</h4>
+                <p class="text-muted" style="font-size: 14px; margin-bottom: 16px">Guarda aquí lo que quieras ver después. Empieza pidiéndole algo a Sen Pai.</p>
+                <button class="btn btn-primary" onClick="{{ pedirRec }}">Pedir una recomendación</button>
+              </div>
+            </sc-if>
+          </section>
+        </sc-if>
+        <sc-if value="{{ isBuscar }}" hint-placeholder-val="{{ false }}">
+          <section data-screen-label="Búsqueda" style="padding: 44px 40px; animation: viewIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1)">
+            <h6 style="color: var(--color-accent); margin-bottom: 4px">Búsqueda</h6>
+            <h2 style="margin-bottom: 6px">Resultados: «{{ query }}»</h2>
+            <p class="text-muted" style="font-size: 14px; margin-bottom: 24px">{{ resultCount }}</p>
+            <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ true }}">
+              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--color-divider); border: 2px solid var(--color-divider)">
+                <sc-for list="{{ results }}" as="c" hint-placeholder-count="3">
+                  <div onClick="{{ c.open }}" style="background: var(--color-surface); cursor: pointer; display: flex; flex-direction: column" style-hover="background: var(--color-neutral-200)">
+                    <div style="aspect-ratio: 3 / 4; position: relative; background: var(--color-neutral-300); display: flex; align-items: flex-end; padding: 12px; font-family: var(--font-heading); font-weight: 800; font-size: 54px; line-height: 0.9; letter-spacing: -0.03em; color: var(--color-neutral-500)">{{ c.ini }}<sc-if value="{{ c.hasImg }}" hint-placeholder-val="{{ false }}"><div role="img" aria-label="{{ c.t }}" style="position: absolute; inset: 0; background-image: {{ c.bgimg }}; background-size: cover; background-position: center; filter: {{ c.cfilter }}"></div></sc-if></div>
+                    <div style="padding: 12px; display: flex; flex-direction: column; gap: 4px">
+                      <div style="font-weight: 800; font-size: 13px; font-family: var(--font-heading); line-height: 1.2">{{ c.t }}</div>
+                      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+                        <span style="font-size: 11px; color: var(--color-neutral-600)">{{ c.meta }}</span>
+                        <span style="font-size: 11px; font-weight: 800; color: var(--color-accent-700); flex: none">★ {{ c.score }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+              <p class="text-muted" style="font-size: 14px">Nada en el archivo con ese nombre. Prueba con otro título o un género.</p>
+            </sc-if>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;assistantName&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;Sen Pai&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Asistente&quot;}, &quot;loadingMs&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 700, &quot;min&quot;: 200, &quot;max&quot;: 1600, &quot;step&quot;: 100, &quot;unit&quot;: &quot;ms&quot;, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Vitrina&quot;}, &quot;showShortcuts&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Chat&quot;}, &quot;colorCovers&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Vitrina&quot;}}">
+class Component extends DCLogic {
+  state = {
+    view: 'onboarding', loading: false, quip: '', selected: 'frieren', query: '', input: '', pendingSearch: false,
+    onboarded: false, vistos: {}, recsBias: null, recsPara: 'tus gustos', covers: {},
+    ratings: {}, marks: {}, messages: []
+  };
+  get CAT() {
+    if (this._cat) return this._cat;
+    this._cat = [
+      { id: 'frieren', mal: 52991, t: 'Frieren: Más Allá del Final del Viaje', y: 2023, studio: 'Madhouse', eps: 32, score: 9.2, gen: ['Fantasía', 'Aventura'], status: 'En emisión', day: 'Viernes', next: 'Viernes 21 ago · T2 E5', ini: 'FR', syn: 'Tras la muerte del héroe Himmel, la maga élfica Frieren emprende un viaje para entender a los humanos que la acompañaron. Melancólica, hermosa y con la mejor magia del gremio.' },
+      { id: 'onepiece', mal: 21, t: 'One Piece', y: 1999, studio: 'Toei Animation', eps: 1135, score: 8.9, gen: ['Acción', 'Aventura'], status: 'En emisión', day: 'Domingo', next: 'Domingo 23 ago · E1136', ini: 'OP', syn: 'Luffy y los Sombrero de Paja navegan el Grand Line en busca del One Piece. Sí, todavía no termina. Sí, vale la pena.' },
+      { id: 'jjk', mal: 40748, t: 'Jujutsu Kaisen', y: 2020, studio: 'MAPPA', eps: 47, score: 8.6, gen: ['Acción', 'Sobrenatural'], status: 'En emisión', day: 'Jueves', next: 'Jueves 20 ago · T3 E7', ini: 'JK', syn: 'Yuji Itadori se traga un dedo maldito y entra al mundo de los hechiceros jujutsu. Animación de otro planeta y cero piedad con tus personajes favoritos.' },
+      { id: 'fmab', mal: 5114, t: 'Fullmetal Alchemist: Brotherhood', y: 2009, studio: 'Bones', eps: 64, score: 9.1, gen: ['Acción', 'Fantasía'], status: 'Finalizado', ini: 'FA', syn: 'Los hermanos Elric buscan la piedra filosofal para recuperar sus cuerpos. El estándar de oro del shonen: no hay un solo episodio de relleno.' },
+      { id: 'aot', mal: 16498, t: 'Shingeki no Kyojin', y: 2013, studio: 'Wit / MAPPA', eps: 94, score: 9.0, gen: ['Acción', 'Drama'], status: 'Finalizado', ini: 'SK', syn: 'La humanidad vive amurallada por miedo a los titanes. Lo que empieza como supervivencia termina siendo otra cosa completamente distinta.' },
+      { id: 'solo', mal: 52299, t: 'Solo Leveling', y: 2024, studio: 'A-1 Pictures', eps: 25, score: 8.4, gen: ['Acción', 'Fantasía'], status: 'En emisión', day: 'Sábado', next: 'Sábado 22 ago · T3 E2', ini: 'SL', syn: 'Sung Jinwoo pasa de ser el cazador más débil a subir de nivel sin límite. Puro poder de progresión, cero vergüenza.' },
+      { id: 'haikyuu', mal: 20583, t: 'Haikyuu!!', y: 2014, studio: 'Production I.G', eps: 85, score: 8.8, gen: ['Deportes', 'Drama'], status: 'Finalizado', ini: 'HQ', syn: 'Hinata quiere volar en la cancha a pesar de su estatura. El anime deportivo que convierte cada punto en asunto de vida o muerte.' },
+      { id: 'csm', mal: 44511, t: 'Chainsaw Man', y: 2022, studio: 'MAPPA', eps: 12, score: 8.5, gen: ['Acción', 'Terror'], status: 'Finalizado', ini: 'CM', syn: 'Denji se fusiona con su demonio-motosierra para pagar sus deudas. Caótico, sangriento y extrañamente conmovedor.' },
+      { id: 'spy', mal: 50265, t: 'Spy x Family', y: 2022, studio: 'Wit / CloverWorks', eps: 62, score: 8.3, gen: ['Comedia', 'Acción'], status: 'En emisión', day: 'Miércoles', next: 'Miércoles 19 ago · E63', ini: 'SF', syn: 'Un espía, una asesina y una niña telépata fingen ser una familia. La comedia más cozy del catálogo.' },
+      { id: 'vinland', mal: 37521, t: 'Vinland Saga', y: 2019, studio: 'Wit / MAPPA', eps: 48, score: 8.8, gen: ['Acción', 'Historia'], status: 'Finalizado', ini: 'VS', syn: 'Thorfinn crece entre vikingos buscando venganza, hasta que la historia le pregunta si eso era lo que quería. «No tengo enemigos.»' }
+    ];
+    return this._cat;
+  }
+  OPINIONES = [['no', 'No fue lo mío'], ['ok', 'Estuvo bien'], ['love', 'Me encantó']];
+  name() { return this.props.assistantName ?? 'Sen Pai'; }
+  aName() { return this.name().toUpperCase(); }
+  ms() { return this.props.loadingMs ?? 700; }
+  async loadCovers() {
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    let queue = this.CAT.map(c => ({ c, tries: 0 }));
+    while (queue.length) {
+      const { c, tries } = queue.shift();
+      try {
+        const r = await fetch(`https://api.jikan.moe/v4/anime/${c.mal}`);
+        if (r.ok) {
+          const j = await r.json();
+          const u = (j && j.data && j.data.images && j.data.images.jpg && (j.data.images.jpg.large_image_url || j.data.images.jpg.image_url)) || null;
+          if (u) this.setState(s => ({ covers: { ...s.covers, [c.id]: u } }));
+        } else if (tries < 3) {
+          queue.push({ c, tries: tries + 1 });
+          if (r.status === 429) await wait(2500);
+        }
+      } catch (e) {
+        if (tries < 3) queue.push({ c, tries: tries + 1 });
+      }
+      await wait(700);
+    }
+  }
+  cfilter() { return (this.props.colorCovers ?? false) ? 'none' : 'grayscale(1) contrast(1.05)'; }
+  componentDidMount() {
+    this.loadCovers();
+    this.bot('Dime qué acabas de ver y te digo qué sigue, nakama. O marca en la vitrina lo que ya viste — al tercer toque arranco solo. ⟶');
+  }
+  scrollSoon() { setTimeout(() => { const el = this.chatEl; if (el) el.scrollTop = el.scrollHeight; }, 30); }
+  push(m) { this.setState(s => ({ messages: [...s.messages, m] })); this.scrollSoon(); }
+  user(text) { this.push({ id: Math.random(), isUser: true, text }); }
+  typing() { const id = Math.random(); this.push({ id, isBot: true, typing: true, text: '' }); return id; }
+  resolve(id, text) {
+    this.setState(s => ({ messages: s.messages.map(m => m.id === id ? { ...m, typing: false, text } : m) }));
+    this.scrollSoon();
+  }
+  bot(text) { const id = this.typing(); setTimeout(() => this.resolve(id, text), 550); }
+  go(view, sel) {
+    const quips = ['Invocando datos del más allá...', 'Consultando al Consejo Supremo de Senpais...', 'Cargando a velocidad PLUS ULTRA...', 'Desempolvando el archivo sagrado...', 'Rompiendo el límite del poder...'];
+    this.setState({ loading: true, quip: quips[Math.floor(Math.random() * quips.length)] });
+    setTimeout(() => this.setState(s => ({ view, loading: false, selected: sel ?? s.selected })), this.ms());
+  }
+  openSerie(c) { this.bot(`¡${c.t}! Ficha invocada directo del archivo sagrado.`); this.go('serie', c.id); }
+  showRecs(para, bias) {
+    this.setState({ recsPara: para, recsBias: bias ?? null, onboarded: true });
+    this.go('recs');
+  }
+  replyRecs() { this.bot('¡YOSH! Escaneé tu perfil con mi ojo interior y forjé recomendaciones dignas de un arco final. ¡Mira la vitrina!'); this.showRecs('tus gustos'); }
+  replyCal() { this.bot('¡El calendario semanal, invocado! Frieren cae el viernes, como los dioses del anime mandan.'); this.go('calendario'); }
+  replyLista() { this.bot('Tu colección, nakama. Custodiada con el honor de mil samuráis.'); this.go('lista'); }
+  surprise() { const cat = this.CAT; const c = cat[Math.floor(Math.random() * cat.length)]; this.bot(`¡TIRADA DE DADOS DEL DESTINO! ...¡${c.t}! El universo ha hablado y el universo tiene buen gusto.`); this.setState({ onboarded: true }); this.go('serie', c.id); }
+  rate(c, val, label) {
+    this.setState(s => ({ ratings: { ...s.ratings, [c.id]: val } }));
+    this.bot(val === 'love' ? `¡«${label}» para ${c.t}! Gente de cultura. Con esto afino mi ojo interior.` : val === 'ok' ? `«${label}» para ${c.t}. Anotado en el pergamino, nakama.` : `¿No fue lo tuyo? Lo respeto... y ya sé qué NO recomendarte. Eso también es poder.`);
+  }
+  mark(c) {
+    const on = !this.state.marks[c.id];
+    this.setState(s => ({ marks: { ...s.marks, [c.id]: on } }));
+    this.bot(on ? `¡${c.t} sellada en tu lista! Buen ojo, digno de un cazador rango S.` : `${c.t} salió de tu lista · sin rencores. El archivo nunca olvida.`);
+  }
+  toggleVisto(id) {
+    const vistos = { ...this.state.vistos, [id]: !this.state.vistos[id] };
+    this.setState({ vistos });
+    const n = Object.keys(vistos).filter(k => vistos[k]).length;
+    if (n >= 3 && !this.arranco) {
+      this.arranco = true;
+      this.bot('Ya con eso me hago una idea, nakama. ¡Forjando tus primeras recomendaciones con mi ojo interior!');
+      this.showRecs('lo que ya viste');
+    }
+  }
+  obSkip(e) { if (e && e.preventDefault) e.preventDefault(); this.setState({ onboarded: true }); this.bot('Modo misterioso, ¿eh? Me gusta. La vitrina es tuya — escríbeme cuando quieras.'); this.go('inicio'); }
+  gustos() {
+    const g = {};
+    this.CAT.filter(c => this.state.vistos[c.id]).forEach(c => c.gen.forEach(x => { g[x] = (g[x] || 0) + 1; }));
+    Object.keys(this.state.ratings).forEach(id => {
+      const c = this.CAT.find(x => x.id === id);
+      if (!c) return;
+      const w = this.state.ratings[id] === 'love' ? 2 : this.state.ratings[id] === 'no' ? -2 : 0;
+      c.gen.forEach(x => { g[x] = (g[x] || 0) + w; });
+    });
+    return g;
+  }
+  computeRecs() {
+    const st = this.state, g = this.gustos();
+    let pool = this.CAT.filter(c => !st.vistos[c.id] && !st.marks[c.id]);
+    if (!pool.length) pool = this.CAT.filter(c => !st.vistos[c.id]);
+    let scored = pool.map(c => ({ c, aff: c.gen.reduce((a, x) => a + (g[x] || 0), 0) }));
+    if (st.recsBias === 'accion') scored = scored.map(s => ({ ...s, aff: s.aff + (s.c.gen.includes('Acción') ? 10 : -10) }));
+    if (st.recsBias === 'corto') scored.sort((a, b) => a.c.eps - b.c.eps);
+    else if (st.recsBias === 'raro') scored.sort((a, b) => a.c.score - b.c.score);
+    else scored.sort((a, b) => b.aff - a.aff || b.c.score - a.c.score);
+    return scored.slice(0, 4).map(({ c }) => {
+      const vistas = this.CAT.filter(x => st.vistos[x.id] && x.gen.some(y => c.gen.includes(y)));
+      let reason = vistas.length ? `Porque viste ${vistas[0].t}` : '';
+      if (st.recsBias === 'corto') reason = `${c.eps} episodios · se acaba rápido`;
+      if (st.recsBias === 'raro') reason = 'Joya menos conocida del archivo';
+      if (st.recsBias === 'accion') reason = reason || 'Pura acción, como pediste';
+      return { c, reason: reason.slice(0, 90) };
+    });
+  }
+  doSearch(q) {
+    const l = q.toLowerCase();
+    const r = this.CAT.filter(c => c.t.toLowerCase().includes(l) || c.gen.some(g => g.toLowerCase().includes(l)));
+    this.setState({ query: q, onboarded: true });
+    this.bot(r.length ? `¡Encontrado! Resultados para «${q}», directo del archivo sagrado.` : `Hmm... nada con «${q}» en el archivo. Ni con mi Sharingan lo veo. Prueba otro título o género.`);
+    this.go('buscar');
+  }
+  finishedSeries(t) {
+    const l = t.toLowerCase();
+    const c = this.CAT.find(x => x.t.toLowerCase().includes(l));
+    if (c) {
+      this.setState(s => ({ vistos: { ...s.vistos, [c.id]: true } }));
+      this.bot(`¡${c.t}, terminada! Respeto total. Con eso calibro el ojo interior — mira lo que sigue en la vitrina.`);
+      return this.showRecs(`después de ${c.t}`);
+    }
+    this.doSearch(t);
+  }
+  applyAction(j) {
+    const cat = this.CAT;
+    if (j.action === 'serie' && j.serieId) { const c = cat.find(x => x.id === j.serieId); if (c) return this.go('serie', c.id); }
+    if (j.action === 'buscar' && j.query) { this.setState({ query: j.query, onboarded: true }); return this.go('buscar'); }
+    if (j.action === 'recs') return this.showRecs(j.para || 'tu mensaje');
+    if (['calendario', 'lista', 'inicio'].includes(j.action)) return this.go(j.action);
+  }
+  fallbackRoute(t, id) {
+    const l = t.toLowerCase();
+    if (/recom|recomienda|qu[eé] sigo|algo para/.test(l)) { this.resolve(id, '¡YOSH! Recomendaciones forjadas con mi ojo interior. ¡Mira la vitrina!'); return this.showRecs(t.slice(0, 40)); }
+    if (/cu[aá]ndo|cap[ií]tulo|calendario|sale|estreno/.test(l)) { this.resolve(id, '¡El calendario semanal, invocado! Mira la vitrina, nakama.'); return this.go('calendario'); }
+    if (/lista|guardad/.test(l)) { this.resolve(id, 'Tu colección, custodiada con honor. ¡En la vitrina!'); return this.go('lista'); }
+    if (/sorpr/.test(l)) { const c = this.CAT[Math.floor(Math.random() * this.CAT.length)]; this.resolve(id, `¡TIRADA DEL DESTINO! ¡${c.t}!`); return this.go('serie', c.id); }
+    if (/acab[eé]|termin[eé]/.test(l)) { this.resolve(id, '¿Cuál acabaste? Dime el nombre y te digo qué sigue.'); return this.setState({ pendingFinished: true }); }
+    const hit = this.CAT.filter(c => c.t.toLowerCase().includes(l) || c.gen.some(g => g.toLowerCase().includes(l)));
+    if (hit.length) { this.setState({ query: t, onboarded: true }); this.resolve(id, `¡Encontrado en el archivo! Resultados para «${t}» en la vitrina.`); return this.go('buscar'); }
+    this.resolve(id, 'No me quedó claro qué buscas, nakama. ¿Fue algo que viste hace poco, o quieres empezar de cero?');
+  }
+  async send() {
+    const t = this.state.input.trim();
+    if (!t) return;
+    this.user(t);
+    const wasPending = this.state.pendingSearch, wasFinished = this.state.pendingFinished;
+    this.setState({ input: '', pendingSearch: false, pendingFinished: false });
+    if (wasPending) return this.doSearch(t);
+    if (wasFinished) return this.finishedSeries(t);
+    const id = this.typing();
+    const cat = this.CAT, st = this.state;
+    try {
+      const catalogo = cat.map(c => `${c.id}: ${c.t} (${c.y}, ${c.gen.join('/')}, ${c.eps} eps, ${c.status}${c.next ? ', próximo: ' + c.next : ''}, nota ${c.score})`).join('\n');
+      const vistos = cat.filter(c => st.vistos[c.id]).map(c => c.t).join(', ') || 'ninguna';
+      const history = st.messages.filter(m => m.text && !m.typing).slice(-8).map(m => `${m.isUser ? 'USUARIO' : 'TÚ'}: ${m.text}`).join('\n');
+      const raw = await window.claude.complete({
+        system: `Eres ${this.name()}, el guía de BSP, plataforma de anime en español. Personalidad: otaku INTENSO y teatral — nakama, kokoro, "¡NANI!", referencias shonen — pero útil y breve. Siempre en español. NUNCA prometas cantidades ("aquí tienes 3") — la vitrina muestra solo títulos verificados.
+Catálogo BSP:\n${catalogo}
+Perfil: ya vio [${vistos}], en su lista [${Object.keys(st.marks).filter(k => st.marks[k]).join(', ') || 'vacía'}], opiniones ${JSON.stringify(st.ratings)} (love=me encantó, ok=estuvo bien, no=no fue lo mío).
+Responde SOLO un JSON válido, sin markdown: {"reply": "tu respuesta, máx 50 palabras", "action": "recs|calendario|lista|buscar|serie|inicio|none", "serieId": "id si action=serie", "query": "término si action=buscar", "para": "si action=recs: eco corto de lo pedido, ej 'algo corto para el finde'"}.
+Reglas: pide recomendación o dice qué acaba de ver→action recs. Estrenos/próximos episodios→calendario. Menciona una serie del catálogo→serie con su id. Busca algo→buscar. Charla general→none.`,
+        messages: [{ role: 'user', content: (history ? `Conversación previa:\n${history}\n\n` : '') + `USUARIO dice: ${t}` }],
+        max_tokens: 400
+      });
+      const m = raw.match(/\{[\s\S]*\}/);
+      const j = JSON.parse(m[0]);
+      this.resolve(id, j.reply || '...');
+      if (j.action && j.action !== 'none') this.applyAction(j);
+    } catch (e) {
+      this.fallbackRoute(t, id);
+    }
+  }
+  renderVals() {
+    const st = this.state, cat = this.CAT;
+    const mk = c => ({ ini: c.ini, t: c.t, meta: `${c.y} · ${c.studio}`, score: c.score.toFixed(1), status: c.status, open: () => this.openSerie(c), bgimg: st.covers[c.id] ? `url("${st.covers[c.id]}")` : 'none', hasImg: !!st.covers[c.id], cfilter: this.cfilter() });
+    const c = cat.find(x => x.id === st.selected) || cat[0];
+    const days = ['Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    const listSrc = cat.filter(x => st.marks[x.id]);
+    const ql = st.query.toLowerCase();
+    const results = st.query ? cat.filter(x => x.t.toLowerCase().includes(ql) || x.gen.some(g => g.toLowerCase().includes(ql))) : [];
+    const labels = { onboarding: '¿CUÁL DE ESTOS HAS VISTO?', inicio: 'INICIO', recs: 'RECOMENDACIONES', serie: c.t.toUpperCase(), calendario: 'CALENDARIO SEMANAL', lista: 'MI LISTA', buscar: 'BÚSQUEDA' };
+    const nVistos = Object.keys(st.vistos).filter(k => st.vistos[k]).length;
+    const chipDefs = st.onboarded
+      ? [
+          ['Más acción', () => { this.user('Más acción'); this.bot('¡Modo batalla activado! Puños, katanas y gritos de poder en la vitrina.'); this.showRecs('más acción', 'accion'); }],
+          ['Algo más corto', () => { this.user('Algo más corto'); this.bot('Series que sí terminan, nakama. La vitrina tiene lo tuyo.'); this.showRecs('algo más corto', 'corto'); }],
+          ['Menos conocido', () => { this.user('Menos conocido'); this.bot('Joyas ocultas del archivo, solo para gente de cultura. ¡Mira!'); this.showRecs('joyas menos conocidas', 'raro'); }],
+          ['¿Cuándo sale el próximo cap?', () => { this.user('¿Cuándo sale el próximo capítulo?'); this.replyCal(); }],
+          ['Sorpréndeme', () => { this.user('Sorpréndeme'); this.surprise(); }]
+        ]
+      : [
+          ['Acabé una serie', () => { this.user('Acabé una serie'); this.bot('¿Cuál acabaste? Dime el nombre y te digo qué sigue.'); this.setState({ pendingFinished: true }); }],
+          ['Algo corto para el finde', () => { this.user('Algo corto para el finde'); this.bot('¡Maratón de finde asegurado! Series que se acaban antes que tus botanas.'); this.showRecs('algo corto para el finde', 'corto'); }],
+          ['Sorpréndeme', () => { this.user('Sorpréndeme'); this.surprise(); }]
+        ];
+    return {
+      chatRef: el => { this.chatEl = el; },
+      messages: st.messages.map(m => ({ ...m, who: m.isBot ? this.aName() : 'TÚ', showText: !m.typing })),
+      showChips: this.props.showShortcuts ?? true,
+      chips: chipDefs.map(([label, click]) => ({ label, click })),
+      input: st.input,
+      onInput: e => this.setState({ input: e.target.value }),
+      onKey: e => { if (e.key === 'Enter') this.send(); },
+      onSend: () => this.send(),
+      openLista: () => { this.user('Muéstrame mi lista'); this.replyLista(); },
+      listaCount: listSrc.length,
+      pedirRec: () => { this.user('Recomiéndame algo'); this.replyRecs(); },
+      headerLabel: labels[st.view] || 'INICIO',
+      loading: st.loading, quip: st.quip,
+      isOb: st.view === 'onboarding', isInicio: st.view === 'inicio', isRecs: st.view === 'recs', isSerie: st.view === 'serie',
+      isCal: st.view === 'calendario', isLista: st.view === 'lista', isBuscar: st.view === 'buscar',
+      obSeries: cat.map(x => ({
+        ini: x.ini, t: x.t, on: !!st.vistos[x.id], bgimg: st.covers[x.id] ? `url("${st.covers[x.id]}")` : 'none', hasImg: !!st.covers[x.id], cfilter: this.cfilter(),
+        border: st.vistos[x.id] ? '2px solid var(--color-accent)' : '2px solid transparent',
+        click: () => this.toggleVisto(x.id)
+      })),
+      obSkip: e => this.obSkip(e),
+      obCount: `${nVistos} ${nVistos === 1 ? 'marcada' : 'marcadas'} · al tercer toque arranco solo`,
+      trending: cat.slice(0, 6).map(mk),
+      recsPara: st.recsPara,
+      recs: this.computeRecs().map(({ c: x, reason }) => ({ ...mk(x), reason, meta: `${x.y} · ${x.eps} eps` })),
+      s: {
+        t: c.t, ini: c.ini, bgimg: st.covers[c.id] ? `url("${st.covers[c.id]}")` : 'none', hasImg: !!st.covers[c.id], cfilter: this.cfilter(), kicker: c.gen.join(' · ').toUpperCase(),
+        meta: `${c.y} · ${c.studio} · ${c.eps} episodios · ${c.status}`,
+        score: c.score.toFixed(1), syn: c.syn, hasNext: !!c.next, next: c.next || '',
+        markLabel: st.marks[c.id] ? 'En tu lista ✓' : 'Guardar en mi lista',
+        toggleMark: () => this.mark(c),
+        opts: this.OPINIONES.map(([val, label]) => {
+          const on = st.ratings[c.id] === val;
+          return { label, bg: on ? 'var(--color-accent)' : 'var(--color-surface)', fg: on ? 'var(--color-bg)' : 'var(--color-text)', click: () => this.rate(c, val, label) };
+        }),
+        epRows: [
+          { n: `Episodio ${c.eps}`, d: '12 ago 2026' },
+          { n: `Episodio ${c.eps - 1}`, d: '5 ago 2026' },
+          { n: `Episodio ${c.eps - 2}`, d: '29 jul 2026' }
+        ]
+      },
+      calDays: days.map(day => ({
+        day,
+        items: cat.filter(x => x.day === day).map(x => ({ t: x.t, ep: (x.next.split('·')[1] || '').trim(), open: () => this.openSerie(x) }))
+      })).filter(d => d.items.length),
+      hasList: listSrc.length > 0, listEmpty: listSrc.length === 0,
+      listRows: listSrc.map(x => {
+        const op = this.OPINIONES.find(([v]) => v === st.ratings[x.id]);
+        return { t: x.t, status: x.status, nota: op ? op[1] : '—', open: () => this.openSerie(x), remove: () => this.mark(x) };
+      }),
+      query: st.query,
+      resultCount: `${results.length} ${results.length === 1 ? 'título encontrado' : 'títulos encontrados'} en el archivo`,
+      hasResults: results.length > 0, noResults: st.query !== '' && results.length === 0,
+      results: results.map(mk)
+    };
+  }
+}
+</script>
+</body>
+</html>

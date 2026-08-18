@@ -32,3 +32,6 @@ npm-debug.log*
 
 # Pruebas
 /coverage
+
+# macOS
+.DS_Store
