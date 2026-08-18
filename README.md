@@ -12,6 +12,12 @@ npm run dev
 
 Abre http://localhost:3000
 
+Para correr las pruebas:
+
+```bash
+node --test --experimental-strip-types --conditions=react-server --env-file=.env.local tests/*.ts
+```
+
 ## Qué necesitas configurar
 
 Copia `.env.example` a `.env.local` y llena los valores. Cada variable tiene un comentario
@@ -26,6 +32,7 @@ arriba diciendo de dónde se saca.
 | [Experiencia](docs/designs/experiencia-y-estados.md) | Cada pantalla y cada estado |
 | [Arquitectura](docs/plans/arquitectura.md) | Cómo se construye |
 | [Diseño visual](DESIGN.md) | Colores, tipografías y componentes |
+| [Decisiones del skin manga](docs/designs/decisiones-skin-manga.md) | Qué se toma y qué se descarta del entregable de diseño |
 
 ## Stack
 

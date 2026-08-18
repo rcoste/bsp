@@ -653,21 +653,27 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | Capa de catálogo | `lib/anime/` con doble caché, freno y verificación de títulos. 21 pruebas en verde |
 | Catálogo semilla | 28 animes reales precargados en `catalogo_cache` |
 | Primera pantalla | Vitrina en modo selección + conversación. Navegable en localhost |
+| Chat con verificación | `lib/chat/` + `/api/chat`. Bucle con memoria intermedia, tarjetas antes que texto, 8 pruebas del candado |
 
 **Cómo correr:** `npm run dev -- --port 3100` (el 3000 está ocupado por otra app en esta máquina).
-**Pruebas:** `node --test --experimental-strip-types tests/*.ts`
+**Pruebas:** `node --test --experimental-strip-types --conditions=react-server --env-file=.env.local tests/*.ts`
+(las dos banderas extra son para que los módulos marcados `server-only` se puedan importar fuera de Next)
 **Scripts útiles:** `scripts/migrar.mjs`, `scripts/semilla-catalogo.mjs`, `scripts/verificar-db.mjs`
 
 **Lo que falta:**
-1. **La llave de Anthropic** (`ANTHROPIC_API_KEY` en `.env.local`, vacía). Sin ella el chat no piensa. Roberto la saca desde la tarjeta de Anthropic en su tablero de raicode.
-2. El chat con verificación (paso 3 del orden de construcción en `docs/plans/arquitectura.md` §9).
-3. Los paneles de detalle y "mi lista", memoria del gusto, candados de gasto, cuenta por correo.
+1. **La llave de Anthropic** (`ANTHROPIC_API_KEY` en `.env.local`, vacía). El chat ya está construido y espera; sin la llave devuelve `falta_llave` y la app lo dice sin romperse. Roberto la saca desde la tarjeta de Anthropic en su tablero de raicode. **En cuanto llegue: medir las 10 conversaciones de prueba y el tiempo hasta la PRIMERA PORTADA (no hasta la primera palabra); si la mediana pasa de 8 segundos, replantear antes de seguir.**
+2. Los paneles de detalle y "mi lista" (paso 5), que además son los que escriben en `listas` — hoy el perfil que lee la AI sale vacío porque nada lo llena todavía.
+3. Memoria del gusto persistida, cuenta por correo. Los candados de gasto quedaron parcialmente hechos (`lib/topes.ts`: dispositivo e IP); falta la alerta de gasto de Anthropic.
 
 **Dos cosas que mordieron durante la construcción — no las reintroduzcas:**
 - **No metas efectos secundarios dentro de un updater de `useState`.** React los ejecuta dos veces en desarrollo y el estado se corrompe en silencio (perdimos el marcado de portadas y duplicamos un mensaje por esto).
 - **El buscador de Jikan se cae.** Devolvió 504 en 10 de 10 consultas durante la construcción, dos veces en dos días. El endpoint por id sí funciona. Por eso hay catálogo semilla y búsqueda local antes de salir a internet. **Nunca caches un resultado vacío cuando la fuente falló** — confunde "no pude buscar" con "no existe" durante 24 horas.
 
-## Entregable de diseño pendiente de decidir (`design_handoffs_bsp/`)
+## Entregable de diseño — YA DECIDIDO, ver `docs/designs/decisiones-skin-manga.md`
+
+**Las tres tensiones de abajo están resueltas; el texto se conserva como registro de la discusión.** Resumen de lo acordado: se adopta el sistema visual Modernist (reemplaza a Fresco), se rechaza la cortina de carga sobre la vitrina, se ignora el contrato JSON del prototipo a favor del bucle con herramientas, se recorta el Calendario, las pestañas son solo de escritorio, y la personalidad de Sen Pai baja de volumen. El layout de celular NO viene en el bundle y hay que construirlo.
+
+## (Registro) Las tensiones que había con el entregable
 
 Llegó un handoff de alta fidelidad ("skin manga", sistema Modernist) que **cambia el sistema visual completo** y **amplía el alcance**. Está guardado en el repo. Antes de implementarlo hay que resolver tres tensiones con lo acordado en planning — **no las decidas por tu cuenta, son de Roberto**:
 
