@@ -137,7 +137,37 @@ export async function buscarPorTitulo(titulo: string): Promise<Anime | null> {
     return ids.length ? await porId(ids[0]) : null;
   }
 
-  // 2. A internet.
+  // 2. ¿Ya lo tenemos guardado? Se busca en el catálogo local ANTES de salir
+  //    a internet. Esto sirve siempre (menos peticiones, más rápido) y además
+  //    mantiene la app en pie cuando la fuente externa se cae — que ya pasó
+  //    dos veces durante la construcción.
+  //    Nota: recorre todo el catálogo local. Con miles de animes habría que
+  //    indexar; para el MVP con decenas es instantáneo.
+  const locales = await sql<{ anime_id: number; datos: Anime & { sinonimos?: string[] } }[]>`
+    select anime_id, datos from catalogo_cache where expira_en > now()
+  `;
+  const enCasa = elegirMejor(
+    titulo,
+    locales.map((l) => ({
+      id: l.anime_id,
+      titulos: [l.datos.titulo, l.datos.tituloEn ?? "", ...(l.datos.sinonimos ?? [])],
+    })),
+  );
+  if (enCasa) {
+    const d = locales.find((l) => l.anime_id === enCasa.id)!.datos;
+    await sql`
+      insert into busquedas_cache (consulta_normalizada, anime_ids, expira_en)
+      values (${clave}, ${sql.json([enCasa.id])}, ${new Date(Date.now() + HORAS_24)})
+      on conflict (consulta_normalizada) do update
+        set anime_ids = excluded.anime_ids, expira_en = excluded.expira_en
+    `;
+    return {
+      id: d.id, titulo: d.titulo, tituloEn: d.tituloEn,
+      anio: d.anio, estado: d.estado, portada: d.portada,
+    };
+  }
+
+  // 3. A internet.
   const json = (await pedirAJikan(
     `/anime?q=${encodeURIComponent(titulo)}&limit=8&sfw=true`,
   )) as { data?: JikanAnime[] } | null;

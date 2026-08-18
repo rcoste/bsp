@@ -114,6 +114,10 @@ Tres reglas duras que separan un caché de "construir tu propia base de datos":
 - Prohibido mencionar un título que la herramienta no confirmó.
 - Si ningún candidato se verifica, no hay error: pregunta de vuelta (§3.5 del documento de experiencia).
 
+**Decisión sobre títulos en español (verificada en pruebas reales):** MyAnimeList **no guarda títulos en español** — "El viaje de Chihiro" no existe en su catálogo, solo "Sen to Chihiro no Kamikakushi" y "Spirited Away". Por eso las instrucciones de la AI le piden **llamar a la herramienta con el título original o en inglés**, no con la traducción al español. La AI sabe la equivalencia; el catálogo no. En la conversación con el usuario sí puede usar el nombre en español.
+
+**Búsqueda en el catálogo local antes de salir a internet:** se busca primero en lo ya cacheado. Beneficio permanente (menos peticiones, respuestas en ~300 ms) y además mantiene la app en pie cuando la fuente externa se cae — que ocurrió dos veces durante la construcción, con el buscador de Jikan devolviendo 504 en 10 de 10 consultas. La búsqueda local es deliberadamente **más estricta** que la externa: es un respaldo, y ante la duda descarta. (Recorre el catálogo local completo; con miles de títulos habría que indexar, con decenas es instantáneo.)
+
 **Cómo se compara un título:** Jikan devuelve `title`, `title_english` y `title_synonyms`. Se compara contra los tres, normalizando (sin acentos, sin signos, minúsculas), y se acepta el mejor resultado solo si supera un umbral de parecido. **Si el parecido es dudoso, se descarta** — mostrar el anime equivocado es peor que mostrar uno menos.
 
 ---
