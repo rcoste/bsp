@@ -671,6 +671,30 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - **No metas efectos secundarios dentro de un updater de `useState`.** React los ejecuta dos veces en desarrollo y el estado se corrompe en silencio (perdimos el marcado de portadas y duplicamos un mensaje por esto).
 - **El buscador de Jikan se cae.** Devolvió 504 en 10 de 10 consultas durante la construcción, dos veces en dos días. El endpoint por id sí funciona. Por eso hay catálogo semilla y búsqueda local antes de salir a internet. **Nunca caches un resultado vacío cuando la fuente falló** — confunde "no pude buscar" con "no existe" durante 24 horas.
 
+## Alcance v1 re-pensado (2026-08-28) — LEE `docs/designs/alcance-v1-para-diseno.md`
+
+Tras analizar la versión anterior del producto (Binge Senpai original, análisis en
+`docs-para-claude-bsp/FEATURES_AND_USE_CASES_AUG14_EDIT_ROB.md`), Roberto y Claude
+recortaron el alcance. **Donde ese documento contradiga a `docs/plans/alcance-mvp.md`,
+manda el nuevo.** Cambios clave respecto al plan anterior:
+
+- **La tarjeta de anime es el producto**: episodios, terminado/en emisión, año y
+  dónde verlo van DENTRO de la tarjeta con peso visual, más tres botones del mismo
+  tamaño (Ya lo vi · Quiero verlo · No, otra cosa). El botón de rechazo va grande.
+- **Se cae el panel de "mi lista"**: lo sustituye la lista vía chat — chip
+  "mis guardados" que llena la vitrina con las tarjetas guardadas.
+- **La ficha/detalle se reduce** a una hoja con sinopsis sin spoilers + dónde
+  verlo + relacionados. Nada de personajes, staff, reseñas.
+- **Las pestañas de escritorio desaparecen** (revisa D5 de decisiones-skin-manga:
+  sin Calendario ni panel de lista no queda nada que pestañear). Escritorio = dos
+  columnas y ya.
+- **Módulo nuevo: búsqueda directa** por autocompletado en el MISMO campo del chat
+  (sin search bar aparte). Toca la sugerencia → tarjeta en la vitrina sin llamada
+  a la AI y sin consumir mensaje. Requiere crecer el catálogo semilla de 28 a
+  algunos cientos de títulos populares — va primero cuando se retome ese módulo.
+- **v1.1 (no construir aún):** aviso de episodio nuevo (la razón honesta para pedir
+  el correo), bandeja dedicada de guardados, tarjeta compartible por WhatsApp.
+
 ## Entregable de diseño — YA DECIDIDO, ver `docs/designs/decisiones-skin-manga.md`
 
 **Las tres tensiones de abajo están resueltas; el texto se conserva como registro de la discusión.** Resumen de lo acordado: se adopta el sistema visual Modernist (reemplaza a Fresco), se rechaza la cortina de carga sobre la vitrina, se ignora el contrato JSON del prototipo a favor del bucle con herramientas, se recorta el Calendario, las pestañas son solo de escritorio, y la personalidad de Sen Pai baja de volumen. El layout de celular NO viene en el bundle y hay que construirlo.
