@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, X } from "lucide-react";
 import type { Turno } from "@/lib/chat/eventos";
+import type { Sugerencia } from "@/lib/anime/buscar";
 import { Escribiendo, Globo } from "./Globo";
 
 /**
@@ -23,9 +24,16 @@ type Props = {
   chips: string[];
   pensando: boolean;
   onEnviar: (texto: string) => void;
+  /** Tocar una sugerencia del autocompletado: va directo a la vitrina. */
+  onSugerencia: (id: number) => void;
   deshabilitado?: boolean;
   aviso?: string;
 };
+
+/** Lo que se espera a que dejes de teclear antes de preguntarle a la base. */
+const ESPERA_TECLEO_MS = 180;
+/** Espejo de MIN_LETRAS en lib/anime/buscar.ts. */
+const MIN_LETRAS = 3;
 
 export function Dock({
   escritorio,
@@ -33,13 +41,55 @@ export function Dock({
   chips,
   pensando,
   onEnviar,
+  onSugerencia,
   deshabilitado,
   aviso,
 }: Props) {
   const [texto, setTexto] = useState("");
   const [abierto, setAbierto] = useState(false);
+  const [sugeridos, setSugeridos] = useState<Sugerencia[]>([]);
   const finRef = useRef<HTMLDivElement>(null);
   const hiloRef = useRef<HTMLDivElement>(null);
+
+  // --- El autocompletado ---------------------------------------------------
+  // No hay barra de búsqueda aparte ni botón de modo, y no hace falta: una
+  // frase de conversación ("algo corto para el finde") no coincide con ningún
+  // título, así que esta lista simplemente no aparece.
+  useEffect(() => {
+    const q = texto.trim();
+    if (q.length < MIN_LETRAS) {
+      setSugeridos([]);
+      return;
+    }
+    // Se espera a que dejes de teclear: sin esto sale una consulta por letra.
+    // El AbortController evita el clásico de que una respuesta lenta de hace
+    // tres letras pise a la buena.
+    const corte = new AbortController();
+    const reloj = window.setTimeout(() => {
+      fetch(`/api/sugerencias?q=${encodeURIComponent(q)}`, {
+        signal: corte.signal,
+      })
+        .then((r) => r.json())
+        .then((d: { sugerencias?: Sugerencia[] }) =>
+          setSugeridos(d.sugerencias ?? []),
+        )
+        .catch(() => {
+          // Abortada o red caída: se deja la lista como está. Que falle el
+          // autocompletado nunca debe estorbarle al chat.
+        });
+    }, ESPERA_TECLEO_MS);
+
+    return () => {
+      window.clearTimeout(reloj);
+      corte.abort();
+    };
+  }, [texto]);
+
+  function tocarSugerencia(id: number) {
+    setTexto("");
+    setSugeridos([]);
+    onSugerencia(id);
+  }
 
   const ultimoBot = [...mensajes].reverse().find((m) => m.de === "ai");
 
@@ -72,6 +122,61 @@ export function Dock({
   // render, desmontaría el campo en cada tecla y se perdería el foco.
   const compositor = () => (
     <>
+      {/* El autocompletado. Va ENCIMA del campo (en celular el teclado ocupa
+          la mitad de abajo) y tocar una sugerencia manda la tarjeta a la
+          vitrina sin llamar a la AI y sin gastar mensaje. */}
+      {sugeridos.length > 0 && (
+        <ul
+          // Con el teclado abierto en un celular quedan ~450px útiles. Más
+          // alto que esto y la lista se come la vitrina, que es justo donde
+          // la persona tiene que ver lo que eligió.
+          className="max-h-[200px] overflow-y-auto overscroll-contain px-4 pb-2"
+          aria-label="Sugerencias"
+        >
+          {sugeridos.map((s) => (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => tocarSugerencia(s.id)}
+                className="flex min-h-[44px] w-full items-center gap-3 py-[6px] text-left"
+              >
+                {/* Miniatura: la portada es la mitad del reconocimiento. */}
+                <span
+                  className="relative block shrink-0 overflow-hidden"
+                  style={{
+                    width: 30,
+                    aspectRatio: "2 / 3",
+                    background: "var(--c-on-ink-divider)",
+                  }}
+                >
+                  {s.portada && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.portada}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="font-display line-clamp-1 block text-[14px] leading-tight">
+                    {s.titulo}
+                  </span>
+                  {s.anio && (
+                    <span
+                      className="block text-[11px]"
+                      style={{ color: "var(--c-on-ink-border)" }}
+                    >
+                      {s.anio}
+                    </span>
+                  )}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {/* Los chips comparten estado con el campo: si uno se deshabilita,
             todos. Fila con scroll horizontal sin barra — nunca dos filas. */}
       {chips.length > 0 && (

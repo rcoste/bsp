@@ -212,6 +212,24 @@ export function Pantalla({
     [hablar, mudo],
   );
 
+  // --- El atajo: buscar un anime por su nombre ----------------------------
+  // Quien ya sabe qué quiere no debería gastar uno de sus 20 mensajes del día
+  // en pedirlo. Esto NO llama a la AI ni pasa por los topes: lee el catálogo
+  // que ya tenemos y pone la tarjeta en la vitrina.
+  const verSugerencia = useCallback((id: number) => {
+    void fetch(`/api/sugerencias?id=${id}`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error("no está");
+        const { anime } = (await r.json()) as { anime: Anime };
+        // Sin porqué: nadie te lo recomendó, tú lo pediste. Inventar una
+        // razón aquí sería exactamente la vaguedad que nos iguala a ChatGPT.
+        setTarjetas([{ anime, razon: "" }]);
+        setAncla(anime.titulo);
+        setAviso(null);
+      })
+      .catch(() => setAviso("No pude abrir esa ficha. Intenta de nuevo."));
+  }, []);
+
   // --- Los tres botones de la tarjeta -------------------------------------
   // Lo que se marca aquí es lo que alimenta la memoria del gusto que lee la
   // AI. Sin esto el perfil sale vacío por más que la persona use la app.
@@ -332,6 +350,7 @@ export function Pantalla({
       chips={chips}
       pensando={pensando}
       onEnviar={enviar}
+      onSugerencia={verSugerencia}
       deshabilitado={mudo}
       aviso={aviso ?? undefined}
     />
