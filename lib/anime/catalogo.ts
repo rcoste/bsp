@@ -38,6 +38,7 @@ type JikanAnime = {
   status: string | null;
   images?: { jpg?: { large_image_url?: string; image_url?: string } };
   synopsis?: string | null;
+  members?: number | null;
 };
 
 /** Recorta cualquier registro del caché a los seis campos acordados. */
@@ -101,13 +102,48 @@ async function pedirAJikan(ruta: string): Promise<unknown | null> {
   return null;
 }
 
-/** Guarda un anime en el caché de datos (7 días). */
+/** Guarda un anime en el caché de datos (7 días) y sus títulos en el índice. */
 async function guardarEnCache(a: Anime, crudo: JikanAnime) {
   await sql`
     insert into catalogo_cache (anime_id, datos, expira_en)
     values (${a.id}, ${sql.json({ ...a, sinonimos: crudo.title_synonyms ?? [], sinopsis: crudo.synopsis ?? null })}, ${new Date(Date.now() + DIAS_7)})
     on conflict (anime_id) do update
       set datos = excluded.datos, expira_en = excluded.expira_en
+  `;
+  await indexarTitulos(
+    a.id,
+    [a.titulo, crudo.title_english, ...(crudo.title_synonyms ?? [])],
+    crudo.members ?? 0,
+  );
+}
+
+/**
+ * Mete los títulos de un anime al índice de búsqueda. Así, lo que llega vía
+ * Jikan queda buscable localmente igual que lo exportado por el script.
+ */
+async function indexarTitulos(
+  id: number,
+  titulos: (string | null | undefined)[],
+  miembros: number,
+) {
+  const filas: {
+    anime_id: number;
+    titulo: string;
+    titulo_normalizado: string;
+    miembros: number;
+  }[] = [];
+  const vistos = new Set<string>();
+  for (const t of titulos) {
+    if (!t) continue;
+    const n = normalizar(t);
+    if (!n || vistos.has(n)) continue;
+    vistos.add(n);
+    filas.push({ anime_id: id, titulo: t, titulo_normalizado: n, miembros });
+  }
+  if (!filas.length) return;
+  await sql`
+    insert into titulos_indice ${sql(filas)}
+    on conflict (anime_id, titulo_normalizado) do nothing
   `;
 }
 
@@ -156,30 +192,39 @@ export async function buscarPorTitulo(titulo: string): Promise<Anime | null> {
   //    a internet. Esto sirve siempre (menos peticiones, más rápido) y además
   //    mantiene la app en pie cuando la fuente externa se cae — que ya pasó
   //    dos veces durante la construcción.
-  //    Nota: recorre todo el catálogo local. Con miles de animes habría que
-  //    indexar; para el MVP con decenas es instantáneo.
-  const locales = await sql<{ anime_id: number; datos: Anime & { sinonimos?: string[] } }[]>`
-    select anime_id, datos from catalogo_cache where expira_en > now()
+  //    Con ~25 mil animes ya no se puede recorrer todo el catálogo: pg_trgm
+  //    (el índice de titulos_indice) trae solo los ~40 títulos más parecidos
+  //    y el veredicto final lo sigue dando elegirMejor() — el candado y su
+  //    umbral no cambian, solo la preselección de candidatos.
+  const parecidos = await sql<{ anime_id: number; titulo: string }[]>`
+    select anime_id, titulo from titulos_indice
+    where titulo_normalizado % ${clave}
+    order by similarity(titulo_normalizado, ${clave}) desc, miembros desc
+    limit 40
   `;
+  const porAnime = new Map<number, string[]>();
+  for (const p of parecidos) {
+    porAnime.set(p.anime_id, [...(porAnime.get(p.anime_id) ?? []), p.titulo]);
+  }
   const enCasa = elegirMejor(
     titulo,
-    locales.map((l) => ({
-      id: l.anime_id,
-      titulos: [l.datos.titulo, l.datos.tituloEn ?? "", ...(l.datos.sinonimos ?? [])],
-    })),
+    [...porAnime].map(([id, titulos]) => ({ id, titulos })),
   );
   if (enCasa) {
-    const d = locales.find((l) => l.anime_id === enCasa.id)!.datos;
-    await sql`
-      insert into busquedas_cache (consulta_normalizada, anime_ids, expira_en)
-      values (${clave}, ${sql.json([enCasa.id])}, ${new Date(Date.now() + HORAS_24)})
-      on conflict (consulta_normalizada) do update
-        set anime_ids = excluded.anime_ids, expira_en = excluded.expira_en
-    `;
-    return {
-      id: d.id, titulo: d.titulo, tituloEn: d.tituloEn,
-      anio: d.anio, estado: d.estado, portada: d.portada,
-    };
+    // porId lee del caché y, si esa fila justo expiró, se refresca vía Jikan
+    // por id (el endpoint que sí aguanta). Si devuelve null es que la fuente
+    // falló: se sigue al paso 3 SIN cachear, para no confundir "no pude" con
+    // "no existe".
+    const local = await porId(enCasa.id);
+    if (local) {
+      await sql`
+        insert into busquedas_cache (consulta_normalizada, anime_ids, expira_en)
+        values (${clave}, ${sql.json([enCasa.id])}, ${new Date(Date.now() + HORAS_24)})
+        on conflict (consulta_normalizada) do update
+          set anime_ids = excluded.anime_ids, expira_en = excluded.expira_en
+      `;
+      return local;
+    }
   }
 
   // 3. A internet.

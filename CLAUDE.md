@@ -651,7 +651,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | Repo | `github.com/rcoste/bsp`, todo subido |
 | Base de datos | 7 tablas cerradas (RLS sin políticas) + 3 funciones SQL. Probadas en vivo |
 | Capa de catálogo | `lib/anime/` con doble caché, freno y verificación de títulos. 21 pruebas en verde |
-| Catálogo semilla | 28 animes reales precargados en `catalogo_cache` |
+| Catálogo | **24,907 animes** exportados de la base del Binge Senpai original (2026-08-28, misma fuente: Jikan/MAL) + `titulos_indice` con 57,787 títulos (incl. ~2 mil en español) para búsqueda local con pg_trgm. Solo animes: sin mangas, sin datos de usuarios. Script: `scripts/exportar-catalogo-pablo.mjs` (necesita `PABLO_DATABASE_URL`). La búsqueda de `catalogo.ts` ya usa el índice — el requisito de "crecer el catálogo semilla" para la búsqueda directa del v1 quedó cubierto |
 | Primera pantalla | Vitrina en modo selección + conversación. Navegable en localhost |
 | Chat con verificación | `lib/chat/` + `/api/chat`. Bucle con memoria intermedia, tarjetas antes que texto, 8 pruebas del candado |
 | Sistema visual | "Manga Modernist" aplicado: `DESIGN.md` + `globals.css` nuevos, Archivo, radius 0, koma grid, dock móvil y escritorio de dos columnas |
