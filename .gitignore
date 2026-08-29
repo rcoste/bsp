@@ -15,6 +15,10 @@ out/
 build/
 next-env.d.ts
 
+# Caché del compilador de TypeScript: se regenera solo en cada build.
+# Versionarlo hace que aparezca modificado en TODOS los cambios.
+*.tsbuildinfo
+
 # Vercel
 .vercel
 
