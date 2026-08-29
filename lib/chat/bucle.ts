@@ -8,6 +8,7 @@ import {
   limpiarChips,
   verificar as verificarReal,
 } from "./herramientas.ts";
+import { consumoVacio, sumarVuelta, type Consumo } from "./gasto.ts";
 
 /**
  * El bucle con memoria intermedia: verificar primero, escribir después.
@@ -24,6 +25,16 @@ const MODELO = "claude-sonnet-5";
 const MAX_VUELTAS = 3;
 
 export type { Evento, Turno };
+
+/** Lo que costó y tardó un turno. Lo registra quien llama, no el bucle: aquí
+ *  no sabemos de qué perfil es. */
+export type Medicion = {
+  modelo: string;
+  consumo: Consumo;
+  tarjetas: number;
+  msPrimeraTarjeta: number | null;
+  msTotal: number;
+};
 
 type Opciones = {
   historial: Turno[];
@@ -57,9 +68,12 @@ export async function conversar({
   emitir,
   señal,
   postizos,
-}: Opciones): Promise<void> {
+}: Opciones): Promise<Medicion> {
   const cliente = postizos?.cliente ?? new Anthropic();
   const verificar = postizos?.verificar ?? verificarReal;
+  const arranque = Date.now();
+  const consumo = consumoVacio();
+  let msPrimeraTarjeta: number | null = null;
 
   const mensajes: Anthropic.MessageParam[] = [
     ...historial.map(
@@ -115,6 +129,7 @@ export async function conversar({
     );
 
     const respuesta = await flujo.finalMessage();
+    sumarVuelta(consumo, respuesta.usage);
 
     const usos = respuesta.content.filter(
       (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
@@ -127,7 +142,7 @@ export async function conversar({
         }
       }
       if (chips.length) emitir({ tipo: "chips", chips });
-      return;
+      return medir();
     }
 
     // Pidió herramienta: el texto de esta vuelta se DESCARTA — no viaja al
@@ -172,6 +187,10 @@ export async function conversar({
             };
           }
           yaEnVitrina.add(verificado.anime.id);
+          // El tiempo hasta la PRIMERA portada es la métrica del producto —
+          // no el tiempo hasta la primera palabra. Se marca aquí, en el
+          // momento exacto en que sale al navegador.
+          if (msPrimeraTarjeta === null) msPrimeraTarjeta = Date.now() - arranque;
           emitir({
             tipo: "tarjeta",
             anime: verificado.anime,
@@ -186,6 +205,20 @@ export async function conversar({
     // Todos los resultados van en UN SOLO mensaje. Partirlos entre varios
     // enseña al modelo a dejar de pedir herramientas en paralelo.
     mensajes.push({ role: "user", content: resultados });
+  }
+
+  // Se agotaron las vueltas sin respuesta escrita. Igual se mide: los turnos
+  // que se quedan sin texto son justo los que hay que poder encontrar después.
+  return medir();
+
+  function medir(): Medicion {
+    return {
+      modelo: MODELO,
+      consumo,
+      tarjetas: yaEnVitrina.size,
+      msPrimeraTarjeta,
+      msTotal: Date.now() - arranque,
+    };
   }
 }
 

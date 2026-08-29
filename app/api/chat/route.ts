@@ -1,7 +1,8 @@
 import { conversar, hayLlave, type Evento, type Turno } from "@/lib/chat/bucle";
 import { conversarDemo, enDemo } from "@/lib/chat/demo";
+import { registrarGasto } from "@/lib/chat/gasto";
 import { registrarError } from "@/lib/db";
-import { perfilDe } from "@/lib/perfil";
+import { idDePerfil, perfilDe } from "@/lib/perfil";
 import { NOMBRE_COOKIE, leerDispositivo, nuevoDispositivo } from "@/lib/sesion";
 import { TOPE_DISPOSITIVO, cobrarMensaje, direccionReal } from "@/lib/topes";
 
@@ -136,12 +137,19 @@ export async function POST(request: Request) {
             señal: request.signal,
           });
         } else {
-          await conversar({
+          const medicion = await conversar({
             historial: cuerpo.historial,
             mensaje: cuerpo.mensaje,
             perfil,
             emitir,
             señal: request.signal,
+          });
+          // El gasto se registra DESPUÉS de emitir todo: es telemetría, y no
+          // debe meterse entre la respuesta y la persona que la está
+          // esperando. registrarGasto ya se traga sus propios errores.
+          void registrarGasto({
+            perfilId: await idDePerfil(dispositivoId).catch(() => null),
+            ...medicion,
           });
         }
         emitir({ tipo: "fin" });

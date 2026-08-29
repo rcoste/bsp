@@ -676,7 +676,14 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - El turno completo (con texto) tiene mediana de 8.0 s. **La portada llega ~3 s antes que el texto** — que es exactamente por lo que se mide la portada y no la primera palabra.
 - **Un caso llegó a 23 s de turno completo: el primero tras arrancar el servidor** (caché de instrucciones frío). Su portada igual salió a 7.5 s. Si vuelve a aparecer un tiempo así, revisar si es caché frío antes de culpar al modelo.
 
-**Candado de gasto (ya no falta):** el espacio de trabajo `BSP` en Anthropic tiene tope de **20 USD/mes**. A ~$0.02 por conversación, eso son ~1,000 conversaciones. La llave es de espacio de trabajo: no puede tocar la API de administración.
+**Candado de gasto (ya no falta):** el espacio de trabajo `BSP` en Anthropic tiene tope de **20 USD/mes**. La llave es de espacio de trabajo: no puede tocar la API de administración.
+
+**Modelo y costo — MEDIDO, no estimado.** El chat usa `claude-sonnet-5` con pensamiento adaptativo en esfuerzo medio y streaming (`lib/chat/bucle.ts`). Cada conversación se registra sola en la tabla `gasto_ia`; el reporte es `node scripts/reporte-gasto.mjs`.
+
+- **$0.0095 por conversación** (medido sobre 10 turnos reales) → ~2,100 conversaciones con 20 USD.
+- **El caché sirve el 85% de los tokens de entrada**, y por eso cuesta la mitad de lo que daba la estimación a mano. Si ese porcentaje se desploma, algo está invalidando el caché — revisar `marcarPuntoDeCache` y que el perfil siga viajando DESPUÉS del punto de caché, no dentro de las instrucciones.
+- **⚠️ La tarifa de Sonnet 5 es introductoria hasta el 2026-08-31.** Desde el 2026-09-01 sube de $2/$10 a $3/$15 por millón de tokens: la conversación pasa a ~$0.014 y el tope alcanza para ~1,400. `lib/chat/gasto.ts` ya cambia de tarifa solo en esa fecha, así que el reporte no se queda cobrando de menos.
+- La telemetría **nunca puede tumbar una conversación**: `sumarVuelta` tolera respuestas sin bloque de uso y `registrarGasto` se traga sus propios errores. Perder un dato de gasto es molesto; dejar a alguien sin respuesta por contar tokens, absurdo.
 
 **Tres cosas del autocompletado que no hay que reintroducir:**
 1. **Buscar por prefijo no sirve.** "titanes" no encuentra "Ataque a los Titanes". Se busca DENTRO del texto (índice de trigramas, ~75 ms).
