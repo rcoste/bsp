@@ -25,12 +25,23 @@ const META_ARRANQUE = 20;
 /** Lo que vive en pantalla el mensajito de deshacer. DESIGN.md: 7 segundos. */
 const MS_DESHACER = 7000;
 
+/** Con qué búsqueda y de qué campaña llegó esta visita. */
+export type Llegada = {
+  consulta: string;
+  /** true = la búsqueda es específica y vale gastar una conversación. */
+  preguntar: boolean;
+  origen: string | null;
+  campana: string | null;
+};
+
 export function Pantalla({
   animes,
   marcasIniciales,
+  llegada,
 }: {
   animes: Anime[];
   marcasIniciales: Record<number, Entrada>;
+  llegada?: Llegada;
 }) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   // Lo marcado desde las tarjetas. Arranca con lo de visitas anteriores para
@@ -392,6 +403,38 @@ export function Pantalla({
     [marcas, persistir],
   );
 
+  // --- La llegada ---------------------------------------------------------
+  // Se registra desde el NAVEGADOR y no en el servidor a propósito: los
+  // rastreadores y los bots que no ejecutan JavaScript no crean perfiles
+  // fantasma ni disparan conversaciones que se cobran.
+  const yaLlego = useRef(false);
+  useEffect(() => {
+    if (!llegada || yaLlego.current) return;
+    yaLlego.current = true;
+
+    void fetch("/api/llegada", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        q: llegada.consulta,
+        utm_source: llegada.origen,
+        utm_campaign: llegada.campana,
+      }),
+    }).catch(() => {
+      // Telemetría: que falle no le estorba a quien vino a usar la app.
+    });
+
+    // La búsqueda con la que llegó ES su primer mensaje. Quien buscó
+    // "parecido a Death Note" y aterriza en una parrilla genérica vio cómo
+    // tiramos lo único que sabíamos de él — y lo que se pagó por saber.
+    if (llegada.preguntar && llegada.consulta) {
+      yaArranco.current = true; // el arranque de gusto ya no dispara solo
+      enviar(llegada.consulta);
+    }
+    // Solo al montar: la llegada ocurre una vez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- El arranque de gusto ----------------------------------------------
   function alternar(id: number) {
     // OJO: este updater tiene que ser PURO — solo calcular el nuevo estado.
@@ -579,7 +622,7 @@ export function Pantalla({
           BSP
         </span>
         <span className="text-[11px]" style={{ color: "var(--c-muted)" }}>
-          Tu universo otaku, en español
+          Qué anime ver, y dónde verlo
         </span>
         <span
           className="kicker ml-auto px-[6px] py-[3px]"

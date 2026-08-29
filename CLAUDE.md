@@ -691,6 +691,18 @@ herramientas que esta app ya tiene de nacimiento.
 - **Muestra `viendo` + `quiero_ver`, con lo que está a medias primero.** El alcance solo pedía `quiero_ver`, pero el estado `viendo` nació después: si alguien marca que va en el ep. 8 y no lo encuentra en sus guardados, es la misma incoherencia que este chip venía a cerrar.
 - El chip NO se esconde con la lista vacía: al tocarlo, la vitrina explica dónde van a vivir las cosas y ofrece volver a la parrilla.
 
+## Aterrizaje de tráfico pagado (2026-08-29)
+
+Los documentos de planning asumen que la app **se comparte por WhatsApp** — o sea, con confianza prestada de un amigo. Quien llega de AdWords no trae nada y su clic ya se pagó. De ahí tres decisiones:
+
+- **`?q=` es el primer mensaje.** `tudominio.com/?q=parecido+a+death+note` dispara la conversación al montar y las tarjetas aparecen sin que la persona toque nada. Ignorar esa búsqueda sería tirar lo único que sabemos de alguien, y justo lo que se pagó por saber.
+- **Dos carriles de costo** (`lib/llegada.ts`): las búsquedas **genéricas** ("qué anime ver") las contesta la parrilla ya renderizada, **gratis**; solo las **específicas** gastan la conversación (~$0.01). Sin ese reparto, mil clics de una campaña genérica se comen la mitad del tope mensual en rebotes. `tests/llegada.test.ts` cubre la clasificación — ya cazó un error que habría gastado AI en cada clic de la campaña "anime en español".
+- **El disparo vive en el NAVEGADOR, no en el servidor.** Los rastreadores y bots que no ejecutan JavaScript no crean perfiles fantasma ni gastan conversaciones.
+
+**La medición es la mitad del trabajo:** `/api/llegada` registra origen y búsqueda **aunque la visita no haga nada** (si no, los rebotes —que también se pagan— son invisibles), y `node scripts/reporte-campanas.mjs` contesta la única pregunta que importa: **cuánto cuesta un usuario que construyó biblioteca**, no cuánto cuesta un clic. El `origen` se escribe solo la primera vez: la campaña que pagó por traer a alguien no pierde el mérito si vuelve por otra.
+
+**`scripts/migrar.mjs` ya lleva registro** (tabla `migraciones`). Antes re-aplicaba todas en cada corrida y eso reventó de verdad: la 0004 restringía el estado a tres valores y la 0006 lo amplió a cinco, así que re-correr la 0004 rechazaba las filas nuevas. En una base sin registro, el script **se detiene y pide** qué dar por aplicado en vez de adivinar.
+
 **Lo que falta, por prioridad (2026-08-29):**
 0. **Publicar.** No existe `.vercel` — la app solo corre en localhost, así que tiene cero usuarios. Es decisión de Roberto (evento `needs-vercel-setup`).
 1. **Celular:** el alcance pide vitrina con tope de 320px y tarjetas en carrusel; hoy es lista vertical. Con la fila de calificación las tarjetas crecieron — revisar en un teléfono real antes de decidir cuánto duele.

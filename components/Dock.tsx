@@ -299,7 +299,7 @@ export function Dock({
               className="text-[11px]"
               style={{ color: "var(--c-on-ink-border)" }}
             >
-              Tu universo otaku, en español
+              Qué anime ver, y dónde verlo
             </span>
             <span
               className="kicker ml-auto px-[6px] py-[3px]"
