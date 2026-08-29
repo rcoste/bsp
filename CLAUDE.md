@@ -665,10 +665,16 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 **Lo que falta:**
 1. **La llave de Anthropic** (`ANTHROPIC_API_KEY` en `.env.local`, vacía). El chat ya está construido y espera; sin la llave devuelve `falta_llave` y la app lo dice sin romperse. Roberto la saca desde la tarjeta de Anthropic en su tablero de raicode. **En cuanto llegue: medir las 10 conversaciones de prueba y el tiempo hasta la PRIMERA PORTADA (no hasta la primera palabra); si la mediana pasa de 8 segundos, replantear antes de seguir.**
 2. **La hoja de detalle** (sinopsis sin spoilers + dónde verlo + relacionados). Las sinopsis del catálogo están en INGLÉS; la columna `sinopsis_es` existe y está vacía — hay que generarla con la AI bajo demanda, no traducir 25 mil por adelantado.
-3. **La búsqueda directa con autocompletado** en el mismo campo del chat. Ya está desbloqueada: `titulos_indice` tiene 57,787 títulos con índice de prefijo.
-4. Cuenta por correo. Los candados de gasto quedaron parcialmente hechos (`lib/topes.ts`: dispositivo e IP); falta la alerta de gasto de Anthropic.
+3. Cuenta por correo. Los candados de gasto quedaron parcialmente hechos (`lib/topes.ts`: dispositivo e IP); falta la alerta de gasto de Anthropic.
 
-**Ya hecho (2026-08-28):** la tarjeta de anime con sus tres botones y la memoria del gusto conectada de punta a punta — marcar escribe en `listas`, `perfilDe()` ya devuelve gusto real, y al recargar la tarjeta se ve marcada.
+**Ya hecho (2026-08-28):**
+- La tarjeta de anime con sus tres botones y la memoria del gusto conectada de punta a punta — marcar escribe en `listas`, `perfilDe()` ya devuelve gusto real, y al recargar la tarjeta se ve marcada.
+- **Búsqueda directa por autocompletado** (`lib/anime/buscar.ts` + `/api/sugerencias`), en el mismo campo del chat, sin llamar a la AI ni gastar mensaje.
+
+**Tres cosas del autocompletado que no hay que reintroducir:**
+1. **Buscar por prefijo no sirve.** "titanes" no encuentra "Ataque a los Titanes". Se busca DENTRO del texto (índice de trigramas, ~75 ms).
+2. **Se muestra el título principal de `catalogo_cache`, nunca el sinónimo que coincidió.** "Frieren at the Funeral" es la misma serie que "Sousou no Frieren".
+3. **El colapso de secuelas exige el título base completo MÁS una marca de secuela.** Solo lo primero escondería "Monster Musume" bajo "Monster", que son obras distintas. Ver `tests/buscar.test.ts`.
 
 **Dos cosas que mordieron durante la construcción — no las reintroduzcas:**
 - **No metas efectos secundarios dentro de un updater de `useState`.** React los ejecuta dos veces en desarrollo y el estado se corrompe en silencio (perdimos el marcado de portadas y duplicamos un mensaje por esto).
