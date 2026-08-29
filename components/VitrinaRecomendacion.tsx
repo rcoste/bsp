@@ -28,6 +28,9 @@ type Props = {
   /** El set actual es la lista de la persona, no una recomendación. Cambia el
    *  encabezado y el estado vacío. */
   esLista?: boolean;
+  /** El ancla ya es una frase completa ("Seguías con esto") y no lo que la
+   *  persona pidió, así que no se le antepone "Para:". */
+  anclaLibre?: boolean;
   onAbrir?: (anime: Anime) => void;
 };
 
@@ -97,6 +100,7 @@ export function VitrinaRecomendacion({
   onCalificar,
   medidor,
   esLista,
+  anclaLibre,
   onAbrir,
 }: Props) {
   return (
@@ -108,7 +112,11 @@ export function VitrinaRecomendacion({
         style={{ background: "var(--c-paper)" }}
       >
         <p className="kicker min-w-0 flex-1" style={{ color: "var(--c-accent-700)" }}>
-          {esLista ? "Tus guardados" : `Para: ${ancla || "tus gustos"}`}
+          {esLista
+            ? "Tus guardados"
+            : anclaLibre
+              ? ancla
+              : `Para: ${ancla || "tus gustos"}`}
         </p>
         {medidor && medidor.marcados < medidor.meta && (
           <button

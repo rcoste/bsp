@@ -701,6 +701,18 @@ Los documentos de planning asumen que la app **se comparte por WhatsApp** — o 
 
 **La medición es la mitad del trabajo:** `/api/llegada` registra origen y búsqueda **aunque la visita no haga nada** (si no, los rebotes —que también se pagan— son invisibles), y `node scripts/reporte-campanas.mjs` contesta la única pregunta que importa: **cuánto cuesta un usuario que construyó biblioteca**, no cuánto cuesta un clic. El `origen` se escribe solo la primera vez: la campaña que pagó por traer a alguien no pierde el mérito si vuelve por otra.
 
+**La vitrina en reposo (`lib/inicio.ts`)** implementa §3b del alcance: nunca está vacía, y lo que muestra depende de quién llegó. Tres puertas, decididas en el servidor sin gastar AI:
+
+| Quién llega | Vitrina | Chat |
+|---|---|---|
+| Primera visita **directa** | La parrilla ("¿Cuál de estos has visto?") | El saludo de siempre |
+| Llega **de campaña** (utm o `?q=`) | Contenido: 6 tarjetas, encabezado "Para empezar" | Invita a marcar |
+| **Regresa** con memoria | Sus guardados, "Seguías con esto" | Memoria CONCRETA: *"Ibas en el episodio 3 de Dandadan"* |
+
+**La diferencia entre las dos primeras es deliberada y no contradice el alcance.** Ese documento dice "primera visita = parrilla" asumiendo llegada por WhatsApp, donde un amigo ya te avaló. Quien llega de un anuncio no trae nada y su clic ya se pagó: pedirle trabajo antes de darle algo es la forma más cara de perderlo. **Misma app, distinta puerta** — no se cambió la regla, se acotó a la puerta donde su supuesto se cumple.
+
+Un dispositivo sin marcas se trata como primera visita **sin mencionar que hubo algo antes**: disculparse por olvidar es peor que nunca haber prometido recordar. Cubierto en `tests/inicio.test.ts`.
+
 **`scripts/migrar.mjs` ya lleva registro** (tabla `migraciones`). Antes re-aplicaba todas en cada corrida y eso reventó de verdad: la 0004 restringía el estado a tres valores y la 0006 lo amplió a cinco, así que re-correr la 0004 rechazaba las filas nuevas. En una base sin registro, el script **se detiene y pide** qué dar por aplicado en vez de adivinar.
 
 **Lo que falta, por prioridad (2026-08-29):**

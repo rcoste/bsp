@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Anime } from "@/lib/anime/catalogo";
 import { leerEventos, type Turno } from "@/lib/chat/eventos";
+import type { Inicio } from "@/lib/inicio";
 import type { Calificacion, Entrada, Marca } from "@/lib/lista";
 import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
@@ -13,7 +14,6 @@ const CHIPS_INICIALES = [
   "Algo corto para el finde",
   "Sorpréndeme",
 ];
-const SALUDO = "Dime qué acabas de ver y te digo qué sigue, nakama.";
 
 /** Lo que dura la animación de descarte, en ms. Espejo de --dur-descarte. */
 const MS_DESCARTE = 280;
@@ -35,14 +35,15 @@ export type Llegada = {
 };
 
 export function Pantalla({
-  animes,
+  inicio,
   marcasIniciales,
   llegada,
 }: {
-  animes: Anime[];
+  inicio: Inicio;
   marcasIniciales: Record<number, Entrada>;
   llegada?: Llegada;
 }) {
+  const animes = inicio.animes;
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   // Lo marcado desde las tarjetas. Arranca con lo de visitas anteriores para
   // que la memoria del gusto se VEA.
@@ -58,10 +59,18 @@ export function Pantalla({
   // El set que se ve ahora es la lista de la persona, no una recomendación.
   const [viendoLista, setViendoLista] = useState(false);
   const [mensajes, setMensajes] = useState<Turno[]>([
-    { de: "ai", texto: SALUDO },
+    { de: "ai", texto: inicio.saludo },
   ]);
-  const [tarjetas, setTarjetas] = useState<Tarjeta[]>([]);
-  const [ancla, setAncla] = useState("");
+  // La vitrina NUNCA está vacía: nace con lo que decidió lib/inicio.ts.
+  const [tarjetas, setTarjetas] = useState<Tarjeta[]>(
+    inicio.modo === "reposo" ? inicio.tarjetas : [],
+  );
+  const [ancla, setAncla] = useState(
+    inicio.modo === "reposo" ? inicio.ancla : "",
+  );
+  // El encabezado del reposo ("Seguías con esto") no es "Para: X"; se apaga
+  // en cuanto la persona pide algo.
+  const [anclaLibre, setAnclaLibre] = useState(inicio.modo === "reposo");
   const [chips, setChips] = useState(CHIPS_INICIALES);
   const [pensando, setPensando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -158,6 +167,7 @@ export function Pantalla({
       ocupado.current = true;
       setPensando(true);
       setAncla(texto);
+      setAnclaLibre(false); // ya no es el reposo: es lo que pidió
       setAviso(null);
       // Un turno nuevo devuelve la vitrina al modo recomendación.
       setMarcandoMas(false);
@@ -264,6 +274,7 @@ export function Pantalla({
         // razón aquí sería exactamente la vaguedad que nos iguala a ChatGPT.
         setTarjetas([{ anime, razon: "" }]);
         setAncla(anime.titulo);
+        setAnclaLibre(false);
         setAviso(null);
         setViendoLista(false);
       })
@@ -502,6 +513,7 @@ export function Pantalla({
         },
       }}
       esLista={viendoLista}
+      anclaLibre={anclaLibre}
     />
   ) : (
     <VitrinaSeleccion
