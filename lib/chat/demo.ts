@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "../db.ts";
-import { soloSeisCampos, type Anime } from "../anime/catalogo.ts";
+import { datosDeTarjeta, type Anime } from "../anime/catalogo.ts";
 import type { Evento, Turno } from "./eventos.ts";
 
 /**
@@ -28,15 +28,28 @@ const ANTES_DEL_TEXTO_MS = 450;
 
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Trae animes reales del catálogo semilla: portadas y títulos de verdad. */
+/**
+ * Trae animes reales del catálogo: portadas y títulos de verdad.
+ *
+ * Se limita a los 300 más vistos. Al azar sobre las 25 mil entradas del
+ * catálogo salen títulos que nadie reconoce ("Pro Yakyuu wo 10-bai Tanoshiku
+ * Miru Houhou"), y entonces la demo ya no sirve para lo único que existe:
+ * juzgar si la interfaz se siente bien.
+ */
 async function delCatalogo(limite: number): Promise<Anime[]> {
   const filas = await sql<{ datos: Anime }[]>`
-    select datos from catalogo_cache
-     where expira_en > now() and datos->>'portada' is not null
-     order by random()
-     limit ${limite}
+    select datos from (
+      select datos from catalogo_cache
+       where expira_en > now()
+         and datos->>'portada' is not null
+         and datos->>'tipo' = any(${["tv", "movie"]})
+       order by (datos->>'miembros')::bigint desc
+       limit 300
+    ) populares
+    order by random()
+    limit ${limite}
   `;
-  return filas.map((f) => soloSeisCampos(f.datos));
+  return filas.map((f) => datosDeTarjeta(f.datos));
 }
 
 type Guion = {

@@ -50,6 +50,7 @@
   --dur-view: 0.45s;
   --dur-msg: 0.25s;
   --dur-sheet: 0.3s;
+  --dur-descarte: 0.28s;
 
   /* --- texturas manga ------------------------------------------------ */
   --halftone-cover: radial-gradient(rgba(32, 30, 29, 0.28) 1px, transparent 1px);
@@ -69,6 +70,7 @@
     --dur-view: 0ms;
     --dur-msg: 0ms;
     --dur-sheet: 0ms;
+    --dur-descarte: 0ms;
   }
   *,
   *::before,
@@ -274,4 +276,23 @@ body {
 
 @utility anim-msg {
   animation: msgIn var(--dur-msg) var(--ease-view);
+}
+
+/* Descarte de una tarjeta: se va de lado y la fila se cierra. Sin esto la
+   tarjeta desaparece de golpe y no se lee como "te hice caso", se lee como un
+   error. No rebota. */
+@keyframes descarte {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+
+@utility anim-descarte {
+  animation: descarte var(--dur-descarte) var(--ease-view) forwards;
+  pointer-events: none;
 }

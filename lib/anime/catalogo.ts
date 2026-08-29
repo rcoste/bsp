@@ -19,7 +19,18 @@ const DIAS_7 = 7 * 24 * 60 * 60 * 1000;
 const HORAS_24 = 24 * 60 * 60 * 1000;
 const ESPERA_MAX_FICHA_MS = 6000;
 
-/** Lo que la app conoce de un anime. Seis campos, nunca el JSON crudo. */
+/** Dónde se puede ver. La url es null cuando solo se conoce la plataforma. */
+export type Donde = { nombre: string; url: string | null };
+
+/**
+ * Lo que la app conoce de un anime: exactamente lo que la TARJETA necesita
+ * para decidir sin abrir nada, y nada más. Nunca el JSON crudo.
+ *
+ * Episodios, estado y dónde verlo no son adorno de ficha: son justo los tres
+ * datos que un modelo de lenguaje inventa con total seguridad, y la razón por
+ * la que esta app le gana a un chat de puro texto.
+ * Ver docs/designs/alcance-v1-para-diseno.md §3.
+ */
 export type Anime = {
   id: number;
   titulo: string;
@@ -27,6 +38,10 @@ export type Anime = {
   anio: number | null;
   estado: string | null;
   portada: string | null;
+  episodios: number | null;
+  /** "tv", "movie", "ova"… Solo para decir "Película" en vez de "1 episodio". */
+  tipo: string | null;
+  donde: Donde[];
 };
 
 type JikanAnime = {
@@ -39,10 +54,16 @@ type JikanAnime = {
   images?: { jpg?: { large_image_url?: string; image_url?: string } };
   synopsis?: string | null;
   members?: number | null;
+  episodes?: number | null;
+  type?: string | null;
 };
 
-/** Recorta cualquier registro del caché a los seis campos acordados. */
-export function soloSeisCampos(datos: Anime): Anime {
+/**
+ * Recorta un registro del caché a lo que va al navegador. La fila guarda más
+ * de lo que promete el tipo (sinopsis, géneros, score); sin este recorte la
+ * sinopsis entera viaja al celular en cada tarjeta, y son ~1.5 KB por anime.
+ */
+export function datosDeTarjeta(datos: Anime): Anime {
   return {
     id: datos.id,
     titulo: datos.titulo,
@@ -50,6 +71,9 @@ export function soloSeisCampos(datos: Anime): Anime {
     anio: datos.anio,
     estado: datos.estado,
     portada: datos.portada,
+    episodios: datos.episodios ?? null,
+    tipo: datos.tipo ?? null,
+    donde: datos.donde ?? [],
   };
 }
 
@@ -61,6 +85,12 @@ function aAnime(j: JikanAnime): Anime {
     anio: j.year ?? null,
     estado: j.status ?? null,
     portada: j.images?.jpg?.large_image_url ?? j.images?.jpg?.image_url ?? null,
+    episodios: j.episodes ?? null,
+    tipo: j.type?.toLowerCase() ?? null,
+    // Jikan no da streaming en /anime/{id}; lo que llega por aquí se queda sin
+    // "dónde verlo" hasta que el catálogo exportado lo cubra. Un dato ausente
+    // es honesto; uno inventado no.
+    donde: [],
   };
 }
 
@@ -152,10 +182,7 @@ export async function porId(id: number): Promise<Anime | null> {
   const filas = await sql<{ datos: Anime }[]>`
     select datos from catalogo_cache where anime_id = ${id} and expira_en > now()
   `;
-  // La fila guardada trae más de lo que promete el tipo (sinopsis, géneros,
-  // sinónimos). Se recorta a los seis campos: sin esto la sinopsis entera
-  // viaja al celular en cada tarjeta, y son ~1.5 KB por anime.
-  if (filas.length) return soloSeisCampos(filas[0].datos);
+  if (filas.length) return datosDeTarjeta(filas[0].datos);
 
   const json = (await pedirAJikan(`/anime/${id}`)) as { data?: JikanAnime } | null;
   if (!json?.data) return null;

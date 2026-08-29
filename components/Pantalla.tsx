@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Anime } from "@/lib/anime/catalogo";
 import { leerEventos, type Turno } from "@/lib/chat/eventos";
+import type { Marca } from "@/lib/lista";
 import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
 import { Dock } from "./Dock";
@@ -14,8 +15,21 @@ const CHIPS_INICIALES = [
 ];
 const SALUDO = "Dime qué acabas de ver y te digo qué sigue, nakama.";
 
-export function Pantalla({ animes }: { animes: Anime[] }) {
+/** Lo que dura la animación de descarte, en ms. Espejo de --dur-descarte. */
+const MS_DESCARTE = 280;
+
+export function Pantalla({
+  animes,
+  marcasIniciales,
+}: {
+  animes: Anime[];
+  marcasIniciales: Record<number, Marca>;
+}) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
+  // Lo marcado desde las tarjetas. Arranca con lo de visitas anteriores para
+  // que la memoria del gusto se VEA.
+  const [marcas, setMarcas] = useState<Record<number, Marca>>(marcasIniciales);
+  const [saliendo, setSaliendo] = useState<Set<number>>(new Set());
   const [mensajes, setMensajes] = useState<Turno[]>([
     { de: "ai", texto: SALUDO },
   ]);
@@ -198,6 +212,63 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
     [hablar, mudo],
   );
 
+  // --- Los tres botones de la tarjeta -------------------------------------
+  // Lo que se marca aquí es lo que alimenta la memoria del gusto que lee la
+  // AI. Sin esto el perfil sale vacío por más que la persona use la app.
+  const marcarAnime = useCallback((anime: Anime, marca: Marca) => {
+    // OJO: la llamada al servidor va FUERA de cualquier updater de useState.
+    // React ejecuta los updaters dos veces en desarrollo; meter el fetch
+    // adentro manda la petición dos veces (ya nos pasó con las portadas).
+    if (marca === "descartado") {
+      // Se va con la animación y luego se quita de la lista. Desaparecer de
+      // golpe no se lee como "te hice caso", se lee como un error.
+      setSaliendo((s) => new Set(s).add(anime.id));
+      const sinMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.setTimeout(
+        () => {
+          setTarjetas((t) => t.filter((x) => x.anime.id !== anime.id));
+          setSaliendo((s) => {
+            const n = new Set(s);
+            n.delete(anime.id);
+            return n;
+          });
+        },
+        sinMotion ? 0 : MS_DESCARTE,
+      );
+    } else {
+      // Optimista: el toque se ve al instante, el servidor confirma después.
+      // Tocar la marca que ya está puesta la quita — marcar sin poder
+      // desmarcar convierte un toque de más en un error permanente.
+      setMarcas((prev) => {
+        const n = { ...prev };
+        if (n[anime.id] === marca) delete n[anime.id];
+        else n[anime.id] = marca;
+        return n;
+      });
+    }
+
+    void fetch("/api/lista", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ animeId: anime.id, marca }),
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("no se guardó");
+        // El servidor manda la marca que quedó de verdad: se adopta esa, no
+        // la que adivinamos, por si las dos versiones se separaron.
+        const { marca: quedo } = (await r.json()) as { marca: Marca | null };
+        setMarcas((prev) => {
+          const n = { ...prev };
+          if (quedo) n[anime.id] = quedo;
+          else delete n[anime.id];
+          return n;
+        });
+      })
+      .catch(() => {
+        setAviso("No pude guardar eso. Tu lista quedó como estaba.");
+      });
+  }, []);
+
   // --- El arranque de gusto ----------------------------------------------
   function alternar(id: number) {
     // OJO: este updater tiene que ser PURO — solo calcular el nuevo estado.
@@ -231,6 +302,9 @@ export function Pantalla({ animes }: { animes: Anime[] }) {
       tarjetas={tarjetas}
       ancla={ancla}
       cargando={pensando}
+      marcas={marcas}
+      saliendo={saliendo}
+      onMarcar={marcarAnime}
     />
   ) : (
     <VitrinaSeleccion

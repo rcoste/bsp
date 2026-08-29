@@ -43,10 +43,20 @@ export async function perfilDe(dispositivoId: string): Promise<string> {
         : f.titulo,
     );
   const quiereVer = filas.filter((f) => f.estado === "quiero_ver").map((f) => f.titulo);
+  const descartados = filas.filter((f) => f.estado === "descartado").map((f) => f.titulo);
 
   const partes: string[] = [];
   if (vistos.length) partes.push(`Ya vio: ${vistos.join(", ")}.`);
   if (quiereVer.length) partes.push(`En su lista para después: ${quiereVer.join(", ")}.`);
+  // El rechazo es la señal más rápida del gusto, pero también la más fácil de
+  // malinterpretar: que no quiera VER algo no significa que odie el género.
+  // Se le dice a la AI qué descartó, sin invitarla a deducir de más.
+  if (descartados.length) {
+    partes.push(
+      `Le ofrecimos esto y dijo que no: ${descartados.join(", ")}. ` +
+        "No sabemos por qué; no supongas que rechaza el género entero.",
+    );
+  }
   partes.push("No le repitas nada de esta lista.");
   return partes.join("\n");
 }

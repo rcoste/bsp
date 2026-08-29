@@ -34,7 +34,7 @@ Regla: el acento a tamaño párrafo sobre claro usa `--c-accent-700`; sobre tint
 - **Radius: 0px en absolutamente todo.** Sin excepciones.
 - Bordes: 2px sólidos `--c-ink` para koma/globos/divisores fuertes; 1px `--c-divider` para bordes suaves.
 - Sombras: ninguna decorativa.
-- Motion: entrada de vista `viewIn` 0.45s cubic-bezier(0.2,0.7,0.2,1) (fade + 16px up); mensajes 0.25s; hoja móvil 0.3s. Nada que rebote.
+- Motion: entrada de vista `viewIn` 0.45s cubic-bezier(0.2,0.7,0.2,1) (fade + 16px up); mensajes 0.25s; hoja móvil 0.3s; **descarte de tarjeta `descarte` 0.28s (fade + 24px a la izquierda)**. Nada que rebote.
 
 ## Componentes BSP
 
@@ -49,6 +49,7 @@ Regla: el acento a tamaño párrafo sobre claro usa `--c-accent-700`; sobre tint
 - **Selección de gustos**: portada marcada = outline 2px acento + palomita Lucide en cuadro rojo de 20-22px (nunca solo color). Al tercer marcado la IA arranca sola; "Saltar" siempre visible.
 - **Loading de vitrina** (solo navegación por chat, ~650-700ms): overlay papel con líneas de velocidad (repeating-linear-gradient 115°, tinta 8%, franjas 22-26/2px), kicker CARGANDO rojo, quip otaku en itálica skew -5°, barra 3px con segmento rojo en loop 0.9s.
 - **El porqué** en cards de recomendación: kicker rojo uppercase, máx 90 caracteres, siempre conectado a datos del usuario ("Porque viste X"); si no hay conexión, se omite. Prohibido "es muy popular".
+- **Tarjeta de anime** (el componente central del producto): portada 2:3 a la izquierda; a la derecha el porqué (kicker), título, romaji en `--c-muted`, y la **fila de datos duros** — episodios y terminado/en emisión en Archivo 800 13px sobre `--c-ink`, año en muted. Esos dos datos van con peso visual, nunca letra chica: son justo lo que un modelo de lenguaje inventa. Debajo, "dónde verlo" como badges de borde 1px (link solo si apunta a la serie, nunca a la portada del sitio). Al pie, **tres botones de peso idéntico** en tercios (Ya lo vi · Quiero verlo · No, otra cosa) separados por el gap koma de 2px; el de rechazo NUNCA en un menú. Activo = fondo acento + ícono Check (color solo, jamás). Descartada: `anim-descarte` y la tarjeta se va.
 - **Dock móvil**: barra de tinta inferior con último globo de Sen Pai (clamp 2 líneas), chips deslizables e input a 16px (evita zoom iOS). El hilo completo sube como hoja al 78% con fondo oscurecido, handle y ✕.
 - **Estados vacíos**: título + una línea de ayuda + CTA primario. Nunca "No hay elementos".
 

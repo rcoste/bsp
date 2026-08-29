@@ -49,6 +49,16 @@ const ESTADOS = {
   upcoming: 'Not yet aired',
 };
 
+// Dónde verlo. Solo plataformas con presencia real en países hispanohablantes:
+// la base trae también Laftel (Corea), MeWatch (Singapur) o Shahid (mundo árabe),
+// y ofrecerlas aquí sería ruido. La precisión por país quedó FUERA del alcance
+// (docs/designs/alcance-v1-para-diseno.md), así que se muestra el nombre de la
+// plataforma sin prometer disponibilidad.
+const PLATAFORMAS = [
+  'Crunchyroll', 'Netflix', 'Amazon Prime Video', 'Disney Plus',
+  'HIDIVE', 'Hulu',
+];
+
 const DIA = 24 * 60 * 60 * 1000;
 const LOTE = 500;
 
@@ -83,7 +93,11 @@ for (;;) {
       ) as portada,
       (select coalesce(array_agg(g.name), '{}') from resource_genres rg
         join genres g on g.id = rg.genre_id
-        where rg.resource_type = 'Anime' and rg.resource_id = a.id) as generos
+        where rg.resource_type = 'Anime' and rg.resource_id = a.id) as generos,
+      (select coalesce(json_agg(json_build_object('nombre', l.name, 'url', l.url)), '[]')
+        from resource_external_links l
+        where l.resource_type = 'Anime' and l.resource_id = a.id
+          and l.name = any(${PLATAFORMAS})) as donde
     from animes a
     where a.id > ${ultimoId}
       and a.media_type is not null
@@ -119,10 +133,17 @@ for (;;) {
       portada: f.portada ?? null,
       sinonimos,
       sinopsis: f.synopsis ?? null,
-      // Extras que la tarjeta v1 va a necesitar (episodios, tipo, score);
-      // soloSeisCampos() los recorta antes de mandarlos al navegador.
-      generos: f.generos ?? [],
       episodios: f.episodes_count ?? null,
+      // Dónde verlo: se queda el nombre de la plataforma siempre, y la URL
+      // SOLO si apunta a la serie. La mitad de los links de la base van a la
+      // portada del sitio ("crunchyroll.com" a secas) — mandar ahí a alguien
+      // que tocó una tarjeta es peor que no ofrecer link.
+      donde: (f.donde ?? []).map((d) => ({
+        nombre: d.nombre,
+        url: new URL(d.url).pathname.replace(/\/$/, '') ? d.url : null,
+      })),
+      // Extras que no van al navegador: datosDeTarjeta() los recorta.
+      generos: f.generos ?? [],
       tipo: f.media_type ?? null,
       score: f.score ?? null,
       miembros: f.members_count ?? 0,

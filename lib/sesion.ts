@@ -53,3 +53,24 @@ export function nuevoDispositivo(): { id: string; cookie: string } {
 }
 
 export const NOMBRE_COOKIE = NOMBRE;
+
+/**
+ * Saca el dispositivo de una petición, creándolo si no traía cookie válida.
+ * Quien la use debe poner `cookie` en la respuesta cuando no sea null.
+ */
+export function dispositivoDePeticion(headers: Headers): {
+  id: string;
+  cookie: string | null;
+} {
+  const cruda = (headers.get("cookie") ?? "")
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${NOMBRE}=`))
+    ?.slice(NOMBRE.length + 1);
+
+  const id = leerDispositivo(cruda);
+  if (id) return { id, cookie: null };
+
+  const nuevo = nuevoDispositivo();
+  return { id: nuevo.id, cookie: nuevo.cookie };
+}

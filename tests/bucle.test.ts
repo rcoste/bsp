@@ -20,6 +20,9 @@ const FRIEREN: Anime = {
   anio: 2023,
   estado: "Finished Airing",
   portada: "https://ejemplo/frieren.jpg",
+  episodios: 28,
+  tipo: "tv",
+  donde: [{ nombre: "Crunchyroll", url: "https://ejemplo/cr/frieren" }],
 };
 
 /** Un doble de la API que devuelve las respuestas que le pases, en orden. */
