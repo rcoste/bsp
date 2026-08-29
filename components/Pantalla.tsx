@@ -5,6 +5,7 @@ import type { Anime } from "@/lib/anime/catalogo";
 import { leerEventos, type Turno } from "@/lib/chat/eventos";
 import type { Inicio } from "@/lib/inicio";
 import type { Calificacion, Entrada, Marca } from "@/lib/lista";
+import { Obertura } from "./Obertura";
 import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
 import { Dock } from "./Dock";
@@ -528,6 +529,17 @@ export function Pantalla({
   );
 
   // El mensajito de deshacer. 7 segundos, foco en la opción segura.
+  // La obertura solo para el que llega EN FRÍO de verdad: primera visita, sin
+  // campaña y sin búsqueda. A quien vuelve no se le vuelve a presentar nada, y
+  // a quien llegó con una búsqueda ya le está contestando la vitrina — taparla
+  // tres segundos sería retrasar justo lo que vino a buscar.
+  const conObertura =
+    inicio.modo === "arranque" &&
+    Object.keys(marcasIniciales).length === 0 &&
+    !llegada?.consulta &&
+    !llegada?.origen &&
+    !llegada?.campana;
+
   const avisoDeshacer = deshacer && (
     <div
       className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 px-4 py-[10px]"
@@ -587,6 +599,7 @@ export function Pantalla({
         className="flex h-screen overflow-hidden"
         style={{ background: "var(--c-paper)" }}
       >
+        {conObertura && <Obertura />}
         {avisoDeshacer}
         {chat}
         <div className="flex min-w-0 flex-1 flex-col">
@@ -620,6 +633,7 @@ export function Pantalla({
         background: "var(--c-paper)",
       }}
     >
+      {conObertura && <Obertura />}
       {avisoDeshacer}
       <header
         className="flex shrink-0 items-center gap-[10px] px-4"
