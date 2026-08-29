@@ -663,13 +663,20 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 **Scripts útiles:** `scripts/migrar.mjs`, `scripts/semilla-catalogo.mjs`, `scripts/verificar-db.mjs`
 
 **Lo que falta:**
-1. **La llave de Anthropic** (`ANTHROPIC_API_KEY` en `.env.local`, vacía). El chat ya está construido y espera; sin la llave devuelve `falta_llave` y la app lo dice sin romperse. Roberto la saca desde la tarjeta de Anthropic en su tablero de raicode. **En cuanto llegue: medir las 10 conversaciones de prueba y el tiempo hasta la PRIMERA PORTADA (no hasta la primera palabra); si la mediana pasa de 8 segundos, replantear antes de seguir.**
-2. **La hoja de detalle** (sinopsis sin spoilers + dónde verlo + relacionados). Las sinopsis del catálogo están en INGLÉS; la columna `sinopsis_es` existe y está vacía — hay que generarla con la AI bajo demanda, no traducir 25 mil por adelantado.
-3. Cuenta por correo. Los candados de gasto quedaron parcialmente hechos (`lib/topes.ts`: dispositivo e IP); falta la alerta de gasto de Anthropic.
+1. **La hoja de detalle** (sinopsis sin spoilers + dónde verlo + relacionados). Las sinopsis del catálogo están en INGLÉS; la columna `sinopsis_es` existe y está vacía — hay que generarla con la AI bajo demanda, no traducir 25 mil por adelantado.
+2. Cuenta por correo.
 
 **Ya hecho (2026-08-28):**
 - La tarjeta de anime con sus tres botones y la memoria del gusto conectada de punta a punta — marcar escribe en `listas`, `perfilDe()` ya devuelve gusto real, y al recargar la tarjeta se ve marcada.
 - **Búsqueda directa por autocompletado** (`lib/anime/buscar.ts` + `/api/sugerencias`), en el mismo campo del chat, sin llamar a la AI ni gastar mensaje.
+- **La llave de Anthropic quedó conectada** y el modo demo se apagó solo.
+
+**La medición que decidía si seguir: PASÓ.** 10 conversaciones reales, 2026-08-28:
+- **Mediana hasta la PRIMERA PORTADA: 5.06 s** (mín 4.2 · máx 7.5) contra un umbral de 8 s. 10/10 con portadas, 0 errores, 2.9 tarjetas por turno.
+- El turno completo (con texto) tiene mediana de 8.0 s. **La portada llega ~3 s antes que el texto** — que es exactamente por lo que se mide la portada y no la primera palabra.
+- **Un caso llegó a 23 s de turno completo: el primero tras arrancar el servidor** (caché de instrucciones frío). Su portada igual salió a 7.5 s. Si vuelve a aparecer un tiempo así, revisar si es caché frío antes de culpar al modelo.
+
+**Candado de gasto (ya no falta):** el espacio de trabajo `BSP` en Anthropic tiene tope de **20 USD/mes**. A ~$0.02 por conversación, eso son ~1,000 conversaciones. La llave es de espacio de trabajo: no puede tocar la API de administración.
 
 **Tres cosas del autocompletado que no hay que reintroducir:**
 1. **Buscar por prefijo no sirve.** "titanes" no encuentra "Ataque a los Titanes". Se busca DENTRO del texto (índice de trigramas, ~75 ms).
