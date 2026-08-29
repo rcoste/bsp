@@ -44,6 +44,8 @@ export function Pantalla({
   const relojDeshacer = useRef<number | null>(null);
   // Volver a la parrilla de marcado después de que ya hubo recomendaciones.
   const [marcandoMas, setMarcandoMas] = useState(false);
+  // El set que se ve ahora es la lista de la persona, no una recomendación.
+  const [viendoLista, setViendoLista] = useState(false);
   const [mensajes, setMensajes] = useState<Turno[]>([
     { de: "ai", texto: SALUDO },
   ]);
@@ -148,6 +150,7 @@ export function Pantalla({
       setAviso(null);
       // Un turno nuevo devuelve la vitrina al modo recomendación.
       setMarcandoMas(false);
+      setViendoLista(false);
 
       let primeraTarjeta = true;
       let abrioBurbuja = false;
@@ -251,8 +254,36 @@ export function Pantalla({
         setTarjetas([{ anime, razon: "" }]);
         setAncla(anime.titulo);
         setAviso(null);
+        setViendoLista(false);
       })
       .catch(() => setAviso("No pude abrir esa ficha. Intenta de nuevo."));
+  }, []);
+
+  // --- El chip "Mis guardados" --------------------------------------------
+  // La lista vive en la conversación, no en una pantalla aparte: cambiar de
+  // pantalla rompe el hilo, que es la ventaja contra ChatGPT. No llama a la
+  // AI ni gasta mensaje.
+  const verGuardados = useCallback(() => {
+    setMarcandoMas(false);
+    setViendoLista(true);
+    setAviso(null);
+    void fetch("/api/guardados")
+      .then(async (r) => {
+        if (!r.ok) throw new Error("no se pudo");
+        const { guardados } = (await r.json()) as {
+          guardados: { anime: Anime; entrada: Entrada }[];
+        };
+        // Sin porqué: nadie te las recomendó, tú las guardaste.
+        setTarjetas(guardados.map((g) => ({ anime: g.anime, razon: "" })));
+        // Se adopta el estado que dice el servidor, por si la pantalla y la
+        // base se separaron (por ejemplo, marcaste algo hablando).
+        setMarcas((prev) => {
+          const n = { ...prev };
+          for (const g of guardados) n[g.anime.id] = g.entrada;
+          return n;
+        });
+      })
+      .catch(() => setAviso("No pude abrir tu lista. Intenta de nuevo."));
   }, []);
 
   // --- Escribir en la biblioteca ------------------------------------------
@@ -395,11 +426,19 @@ export function Pantalla({
   // constructor de biblioteca — y la biblioteca es el factor de retención.
   const enRecomendacion =
     !marcandoMas &&
-    (tarjetas.length > 0 || saltado || (pensando && yaArranco.current));
+    (viendoLista ||
+      tarjetas.length > 0 ||
+      saltado ||
+      (pensando && yaArranco.current));
 
   // El total marcado de verdad (parrilla + tarjetas + chat), para el medidor.
   const totalMarcados = Object.values(marcas).filter(
     (e) => e.marca !== "descartado",
+  ).length;
+
+  // Lo que cuenta el chip: lo que está en la lista, no todo lo marcado.
+  const cuantosGuardados = Object.values(marcas).filter(
+    (e) => e.marca === "quiero_ver" || e.marca === "viendo",
   ).length;
 
   const vitrina = enRecomendacion ? (
@@ -414,8 +453,12 @@ export function Pantalla({
       medidor={{
         marcados: totalMarcados,
         meta: META_ARRANQUE,
-        onSeguir: () => setMarcandoMas(true),
+        onSeguir: () => {
+          setViendoLista(false);
+          setMarcandoMas(true);
+        },
       }}
+      esLista={viendoLista}
     />
   ) : (
     <VitrinaSeleccion
@@ -473,6 +516,8 @@ export function Pantalla({
       pensando={pensando}
       onEnviar={enviar}
       onSugerencia={verSugerencia}
+      onGuardados={verGuardados}
+      cuantosGuardados={cuantosGuardados}
       deshabilitado={mudo}
       aviso={aviso ?? undefined}
     />

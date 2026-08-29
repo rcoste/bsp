@@ -7,6 +7,7 @@ import {
   MAX_TARJETAS,
   actualizarLista as actualizarListaReal,
   limpiarChips,
+  verGuardados as verGuardadosReal,
   verificar as verificarReal,
 } from "./herramientas.ts";
 import { consumoVacio, sumarVuelta, type Consumo } from "./gasto.ts";
@@ -165,6 +166,24 @@ export async function conversar({
           const propuestos = limpiarChips(uso.input);
           if (propuestos.length) chips = propuestos;
           return { type: "tool_result", tool_use_id: uso.id, content: "Anotados." };
+        }
+
+        if (uso.name === "ver_guardados") {
+          if (!dispositivoId) {
+            return {
+              type: "tool_result",
+              tool_use_id: uso.id,
+              content: "Ahora mismo no puedo leer su lista.",
+            };
+          }
+          const { tarjetas, texto } = await verGuardadosReal(dispositivoId);
+          for (const t of tarjetas) {
+            if (yaEnVitrina.has(t.anime.id)) continue;
+            yaEnVitrina.add(t.anime.id);
+            if (msPrimeraTarjeta === null) msPrimeraTarjeta = Date.now() - arranque;
+            emitir({ tipo: "tarjeta", anime: t.anime, razon: t.razon });
+          }
+          return { type: "tool_result", tool_use_id: uso.id, content: texto };
         }
 
         if (uso.name === "actualizar_lista") {

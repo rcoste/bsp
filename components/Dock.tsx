@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUp, X } from "lucide-react";
+import { ArrowUp, Bookmark, X } from "lucide-react";
 import type { Turno } from "@/lib/chat/eventos";
 import type { Sugerencia } from "@/lib/anime/buscar";
 import { Escribiendo, Globo } from "./Globo";
@@ -26,6 +26,11 @@ type Props = {
   onEnviar: (texto: string) => void;
   /** Tocar una sugerencia del autocompletado: va directo a la vitrina. */
   onSugerencia: (id: number) => void;
+  /** El chip "Mis guardados": llena la vitrina con la lista de la persona. */
+  onGuardados: () => void;
+  /** Cuántas trae. Se muestra aunque sea 0: esconder el chip vacío deja sin
+   *  descubrir dónde vive la lista. */
+  cuantosGuardados: number;
   deshabilitado?: boolean;
   aviso?: string;
 };
@@ -42,6 +47,8 @@ export function Dock({
   pensando,
   onEnviar,
   onSugerencia,
+  onGuardados,
+  cuantosGuardados,
   deshabilitado,
   aviso,
 }: Props) {
@@ -178,9 +185,21 @@ export function Dock({
       )}
 
       {/* Los chips comparten estado con el campo: si uno se deshabilita,
-            todos. Fila con scroll horizontal sin barra — nunca dos filas. */}
-      {chips.length > 0 && (
+            todos. Fila con scroll horizontal sin barra — nunca dos filas.
+            "Mis guardados" va PRIMERO y siempre: es la única puerta a la
+            lista, y la lista vive en la conversación, no en otra pantalla. */}
+      {sugeridos.length === 0 && (
         <div className="fila-scroll gap-2 px-4 pb-2 [&::-webkit-scrollbar]:hidden">
+          <button
+            type="button"
+            onClick={onGuardados}
+            className="chip-tinta flex items-center gap-[6px]"
+            style={{ borderColor: "var(--c-accent)" }}
+          >
+            <Bookmark size={14} strokeWidth={2.2} aria-hidden />
+            Mis guardados
+            {cuantosGuardados > 0 && ` · ${cuantosGuardados}`}
+          </button>
           {chips.map((c) => (
             <button
               key={c}

@@ -5,6 +5,7 @@ import { sugerencias } from "../anime/buscar.ts";
 import {
   esCalificacion,
   esMarca,
+  guardados,
   marcar,
   type Entrada,
   type Marca,
@@ -94,6 +95,17 @@ export const HERRAMIENTAS: Anthropic.Tool[] = [
       },
       required: ["titulo", "estado"],
     },
+  },
+  {
+    name: "ver_guardados",
+    description:
+      "Pone en la vitrina la lista de la persona: lo que está viendo (con el " +
+      "episodio en el que va) y lo que apuntó para después. Úsala cuando " +
+      "pregunte por su lista ('¿qué tenía guardado?', '¿qué estaba viendo?', " +
+      "'¿con qué sigo?'). No recibe nada y no inventa: devuelve lo que hay " +
+      "guardado de verdad. Si vuelve vacía, díselo sin adornos y ofrécele " +
+      "recomendarle algo.",
+    input_schema: { type: "object", properties: {} },
   },
   {
     name: "proponer_chips",
@@ -211,6 +223,38 @@ export async function actualizarLista(
         (quedo.calificacion ? `, ${quedo.calificacion}` : "") +
         ". Confírmaselo en una frase corta, sin ceremonia."
       : `${anime.titulo} quedó fuera de su lista.`,
+  };
+}
+
+/**
+ * Ejecuta ver_guardados: manda las tarjetas de la lista a la vitrina y le
+ * cuenta a la AI qué había, para que su respuesta hable de lo que se ve.
+ */
+export async function verGuardados(dispositivoId: string): Promise<{
+  tarjetas: Verificado[];
+  texto: string;
+}> {
+  const lista = await guardados(dispositivoId);
+  if (!lista.length) {
+    return {
+      tarjetas: [],
+      texto:
+        "Su lista está vacía: no tiene nada guardado ni a medias. Díselo sin " +
+        "rodeos y ofrécele recomendarle algo.",
+    };
+  }
+  return {
+    tarjetas: lista.map((g) => ({ anime: g.anime, razon: "" })),
+    texto:
+      "En su lista hay: " +
+      lista
+        .map((g) =>
+          g.entrada.marca === "viendo"
+            ? `${g.anime.titulo} (viéndola${g.entrada.episodio ? `, va en el ep. ${g.entrada.episodio}` : ""})`
+            : `${g.anime.titulo} (apuntada)`,
+        )
+        .join(", ") +
+      ". Ya están en la vitrina; coméntalas en una frase corta, sin listarlas otra vez.",
   };
 }
 

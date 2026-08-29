@@ -25,8 +25,34 @@ type Props = {
   /** Volver a la parrilla de marcado. Visible mientras no llegue a la meta:
    *  la biblioteca del día uno es EL factor de retención (46% vs 6%). */
   medidor?: { marcados: number; meta: number; onSeguir: () => void };
+  /** El set actual es la lista de la persona, no una recomendación. Cambia el
+   *  encabezado y el estado vacío. */
+  esLista?: boolean;
   onAbrir?: (anime: Anime) => void;
 };
+
+/** La lista vacía NO se esconde: explica dónde van a vivir las cosas.
+ *  DESIGN.md → estados vacíos: título + una línea + acción. Nunca "no hay
+ *  elementos". */
+function ListaVacia({ onSeguir }: { onSeguir?: () => void }) {
+  return (
+    <div className="koma grid-cols-1 md:max-w-[860px]">
+      <div className="koma-celda p-6">
+        <h2 className="titulo-seccion mb-2">Todavía no guardas nada</h2>
+        <p className="mb-4 max-w-[46ch] text-[14px]" style={{ color: "var(--c-muted)" }}>
+          Aquí van a vivir las que marques con <strong>Quiero verlo</strong>, y
+          las que estés viendo con el episodio en el que vas. También puedes
+          decírmelo hablando: «apúntame Vinland Saga».
+        </p>
+        {onSeguir && (
+          <button type="button" onClick={onSeguir} className="btn-primario">
+            Marcar las que ya viste
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /** Las siluetas, del tamaño de las tarjetas reales para que nada brinque. */
 function Siluetas() {
@@ -70,6 +96,7 @@ export function VitrinaRecomendacion({
   onMarcar,
   onCalificar,
   medidor,
+  esLista,
   onAbrir,
 }: Props) {
   return (
@@ -81,7 +108,7 @@ export function VitrinaRecomendacion({
         style={{ background: "var(--c-paper)" }}
       >
         <p className="kicker min-w-0 flex-1" style={{ color: "var(--c-accent-700)" }}>
-          Para: {ancla || "tus gustos"}
+          {esLista ? "Tus guardados" : `Para: ${ancla || "tus gustos"}`}
         </p>
         {medidor && medidor.marcados < medidor.meta && (
           <button
@@ -95,7 +122,9 @@ export function VitrinaRecomendacion({
         )}
       </div>
 
-      {cargando && tarjetas.length === 0 ? (
+      {esLista && tarjetas.length === 0 ? (
+        <ListaVacia onSeguir={medidor?.onSeguir} />
+      ) : cargando && tarjetas.length === 0 ? (
         <Siluetas />
       ) : (
         <ul className="koma grid-cols-1 md:max-w-[860px] md:grid-cols-2">

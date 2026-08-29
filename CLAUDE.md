@@ -687,9 +687,17 @@ filtros por género, pantalla de puertas, estadísticas de consumo. El AGENT-TOO
 del feedback tampoco aplica: es el port del prototipo a la arquitectura de bucle de
 herramientas que esta app ya tiene de nacimiento.
 
-**Lo que falta:**
-1. **La hoja de detalle** (sinopsis sin spoilers + dónde verlo + relacionados). Las sinopsis del catálogo están en INGLÉS; la columna `sinopsis_es` existe y está vacía — hay que generarla con la AI bajo demanda, no traducir 25 mil por adelantado.
-2. Cuenta por correo.
+**"Mis guardados" (2026-08-29):** chip siempre visible en el dock → llena la vitrina con la lista (`lib/lista.ts` → `guardados()`, `/api/guardados`), y también funciona hablando (herramienta `ver_guardados`). Ninguno de los dos gasta mensaje ni llama a la AI para leer.
+- **Muestra `viendo` + `quiero_ver`, con lo que está a medias primero.** El alcance solo pedía `quiero_ver`, pero el estado `viendo` nació después: si alguien marca que va en el ep. 8 y no lo encuentra en sus guardados, es la misma incoherencia que este chip venía a cerrar.
+- El chip NO se esconde con la lista vacía: al tocarlo, la vitrina explica dónde van a vivir las cosas y ofrece volver a la parrilla.
+
+**Lo que falta, por prioridad (2026-08-29):**
+0. **Publicar.** No existe `.vercel` — la app solo corre en localhost, así que tiene cero usuarios. Es decisión de Roberto (evento `needs-vercel-setup`).
+1. **Celular:** el alcance pide vitrina con tope de 320px y tarjetas en carrusel; hoy es lista vertical. Con la fila de calificación las tarjetas crecieron — revisar en un teléfono real antes de decidir cuánto duele.
+2. **Volver a sets anteriores** (tira de miniaturas en los mensajes). El alcance lo da por hecho pero nunca se construyó: hoy cada recomendación borra la anterior para siempre.
+3. **La hoja de detalle** (sinopsis sin spoilers + dónde verlo + relacionados). Las sinopsis del catálogo están en INGLÉS; la columna `sinopsis_es` existe y está vacía — hay que generarla con la AI bajo demanda, no traducir 25 mil por adelantado.
+4. **Cuenta por correo.** Baja prioridad: la memoria ya funciona sin cuenta en el mismo dispositivo. Ojo con las dos trampas documentadas arriba (OTP de 8 dígitos que hay que bajar a 6, y el límite de ~2 correos/hora del SMTP de demo).
+5. **Aviso de episodio nuevo** (v1.1). Ahora sí tiene sentido: ya existe el estado `viendo`. Los horarios están en la base de Pablo (4,598 series en `broadcast_schedules`), sin exportar todavía.
 
 **Ya hecho (2026-08-28):**
 - La tarjeta de anime con sus tres botones y la memoria del gusto conectada de punta a punta — marcar escribe en `listas`, `perfilDe()` ya devuelve gusto real, y al recargar la tarjeta se ve marcada.

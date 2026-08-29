@@ -1,4 +1,5 @@
 import "server-only";
+import { datosDeTarjeta, type Anime } from "./anime/catalogo.ts";
 import { sql } from "./db.ts";
 import { idDePerfil } from "./perfil.ts";
 
@@ -118,6 +119,41 @@ export async function calificar(
      where perfil_id = ${perfilId} and anime_id = ${animeId}
        and estado in ('visto', 'abandonada')
   `;
+}
+
+/**
+ * Lo que la persona guardó para sí misma, listo para la vitrina.
+ *
+ * Incluye lo que está VIENDO además de lo que quiere ver, y en ese orden.
+ * El alcance solo pedía "quiero_ver", pero después nació el estado "viendo":
+ * si alguien marca que va en el episodio 8 y luego abre sus guardados y no lo
+ * encuentra, es exactamente la incoherencia que este chip venía a cerrar.
+ * Lo que está a medias va primero porque es lo más accionable.
+ */
+export async function guardados(
+  dispositivoId: string,
+): Promise<{ anime: Anime; entrada: Entrada }[]> {
+  const perfilId = await idDePerfil(dispositivoId);
+  const filas = await sql<
+    {
+      datos: Anime;
+      estado: Marca;
+      episodio: number | null;
+      calificacion: Calificacion | null;
+    }[]
+  >`
+    select c.datos, l.estado, l.episodio, l.calificacion
+      from listas l
+      join catalogo_cache c on c.anime_id = l.anime_id
+     where l.perfil_id = ${perfilId}
+       and l.estado in ('viendo', 'quiero_ver')
+     order by (l.estado = 'viendo') desc, l.actualizado_en desc
+     limit 30
+  `;
+  return filas.map((f) => ({
+    anime: datosDeTarjeta(f.datos),
+    entrada: { marca: f.estado, episodio: f.episodio, calificacion: f.calificacion },
+  }));
 }
 
 /** Lo ya marcado por este dispositivo: {id del anime → entrada}. */
