@@ -49,6 +49,10 @@ export default async function Home({
     <Pantalla
       inicio={inicio}
       marcasIniciales={marcas}
+      // ?intro=1 fuerza la obertura aunque el dispositivo ya la haya visto o
+      // ya tenga historial. Es para poder enseñarla y ajustarla: dura tres
+      // segundos y se marca como vista para siempre.
+      forzarIntro={unico(params.intro) === "1"}
       llegada={{
         consulta: llegada.consulta,
         // Solo las búsquedas específicas gastan una conversación. Las

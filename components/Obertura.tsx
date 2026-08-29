@@ -20,8 +20,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
  */
 
 const CLAVE_VISTA = "bsp_obertura";
-const MS_LINEA_1 = 1500;
-const MS_LINEA_2 = 1700;
+// Leer dos líneas en un celular toma más de lo que uno cree cuando las
+// escribió: con 1.5s la primera se va antes de terminar de leerla.
+const MS_LINEA_1 = 2200;
+const MS_LINEA_2 = 2600;
 /** Espejo de --dur-view: lo que tarda el corte en abrirse. */
 const MS_CORTE = 450;
 
@@ -45,6 +47,12 @@ export function Obertura() {
   }, []);
 
   useEffect(() => {
+    // ?intro=1 la fuerza aunque ya se haya visto. Existe para poder enseñarla
+    // y ajustarla sin borrar el almacenamiento del teléfono a mano — dura 3
+    // segundos y se marca como vista para siempre, así que sin esto revisarla
+    // es imposible en la práctica.
+    const forzada = new URLSearchParams(window.location.search).get("intro") === "1";
+
     let vista = false;
     try {
       vista = localStorage.getItem(CLAVE_VISTA) === "1";
@@ -52,7 +60,7 @@ export function Obertura() {
       vista = false;
     }
     const sinMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (vista || sinMotion) return;
+    if (!forzada && (vista || sinMotion)) return;
 
     setPaso("linea1");
     relojes.current.push(window.setTimeout(() => setPaso("linea2"), MS_LINEA_1));

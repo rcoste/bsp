@@ -39,10 +39,12 @@ export function Pantalla({
   inicio,
   marcasIniciales,
   llegada,
+  forzarIntro,
 }: {
   inicio: Inicio;
   marcasIniciales: Record<number, Entrada>;
   llegada?: Llegada;
+  forzarIntro?: boolean;
 }) {
   const animes = inicio.animes;
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
@@ -534,11 +536,12 @@ export function Pantalla({
   // a quien llegó con una búsqueda ya le está contestando la vitrina — taparla
   // tres segundos sería retrasar justo lo que vino a buscar.
   const conObertura =
-    inicio.modo === "arranque" &&
-    Object.keys(marcasIniciales).length === 0 &&
-    !llegada?.consulta &&
-    !llegada?.origen &&
-    !llegada?.campana;
+    forzarIntro ||
+    (inicio.modo === "arranque" &&
+      Object.keys(marcasIniciales).length === 0 &&
+      !llegada?.consulta &&
+      !llegada?.origen &&
+      !llegada?.campana);
 
   const avisoDeshacer = deshacer && (
     <div
