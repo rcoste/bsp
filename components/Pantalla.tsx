@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Anime } from "@/lib/anime/catalogo";
 import { leerEventos, type Turno } from "@/lib/chat/eventos";
-import type { Marca } from "@/lib/lista";
+import type { Calificacion, Entrada, Marca } from "@/lib/lista";
 import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
 import { Dock } from "./Dock";
@@ -18,18 +18,32 @@ const SALUDO = "Dime qué acabas de ver y te digo qué sigue, nakama.";
 /** Lo que dura la animación de descarte, en ms. Espejo de --dur-descarte. */
 const MS_DESCARTE = 280;
 
+/** La meta del arranque de gusto. Producción del producto original: ~20
+ *  títulos el día uno → 46% de regreso; 1-2 títulos → 6%. */
+const META_ARRANQUE = 20;
+
+/** Lo que vive en pantalla el mensajito de deshacer. DESIGN.md: 7 segundos. */
+const MS_DESHACER = 7000;
+
 export function Pantalla({
   animes,
   marcasIniciales,
 }: {
   animes: Anime[];
-  marcasIniciales: Record<number, Marca>;
+  marcasIniciales: Record<number, Entrada>;
 }) {
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
   // Lo marcado desde las tarjetas. Arranca con lo de visitas anteriores para
   // que la memoria del gusto se VEA.
-  const [marcas, setMarcas] = useState<Record<number, Marca>>(marcasIniciales);
+  const [marcas, setMarcas] = useState<Record<number, Entrada>>(marcasIniciales);
   const [saliendo, setSaliendo] = useState<Set<number>>(new Set());
+  // La tarjeta recién descartada, por si fue un toque accidental: descartar
+  // pesa en TODAS las recomendaciones siguientes, y sin deshacer un error se
+  // vuelve permanente.
+  const [deshacer, setDeshacer] = useState<{ tarjeta: Tarjeta; indice: number } | null>(null);
+  const relojDeshacer = useRef<number | null>(null);
+  // Volver a la parrilla de marcado después de que ya hubo recomendaciones.
+  const [marcandoMas, setMarcandoMas] = useState(false);
   const [mensajes, setMensajes] = useState<Turno[]>([
     { de: "ai", texto: SALUDO },
   ]);
@@ -132,6 +146,8 @@ export function Pantalla({
       setPensando(true);
       setAncla(texto);
       setAviso(null);
+      // Un turno nuevo devuelve la vitrina al modo recomendación.
+      setMarcandoMas(false);
 
       let primeraTarjeta = true;
       let abrioBurbuja = false;
@@ -179,6 +195,15 @@ export function Pantalla({
             revelar(evento.texto);
           } else if (evento.tipo === "chips") {
             setChips(evento.chips);
+          } else if (evento.tipo === "marca") {
+            // La AI guardó algo que la persona le contó ("voy en el 8"):
+            // la pantalla lo refleja al instante.
+            setMarcas((prev) => {
+              const n = { ...prev };
+              if (evento.entrada) n[evento.animeId] = evento.entrada;
+              else delete n[evento.animeId];
+              return n;
+            });
           } else if (evento.tipo === "error") {
             setAviso(evento.mensaje);
           }
@@ -230,62 +255,111 @@ export function Pantalla({
       .catch(() => setAviso("No pude abrir esa ficha. Intenta de nuevo."));
   }, []);
 
-  // --- Los tres botones de la tarjeta -------------------------------------
+  // --- Escribir en la biblioteca ------------------------------------------
   // Lo que se marca aquí es lo que alimenta la memoria del gusto que lee la
   // AI. Sin esto el perfil sale vacío por más que la persona use la app.
-  const marcarAnime = useCallback((anime: Anime, marca: Marca) => {
-    // OJO: la llamada al servidor va FUERA de cualquier updater de useState.
-    // React ejecuta los updaters dos veces en desarrollo; meter el fetch
-    // adentro manda la petición dos veces (ya nos pasó con las portadas).
-    if (marca === "descartado") {
-      // Se va con la animación y luego se quita de la lista. Desaparecer de
-      // golpe no se lee como "te hice caso", se lee como un error.
-      setSaliendo((s) => new Set(s).add(anime.id));
-      const sinMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      window.setTimeout(
-        () => {
-          setTarjetas((t) => t.filter((x) => x.anime.id !== anime.id));
-          setSaliendo((s) => {
-            const n = new Set(s);
-            n.delete(anime.id);
+
+  /** Manda la marca al servidor y adopta la entrada que quedó de verdad. */
+  const persistir = useCallback(
+    (animeId: number, marca: Marca, extras?: { calificacion?: Calificacion }) => {
+      void fetch("/api/lista", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ animeId, marca, ...extras }),
+      })
+        .then(async (r) => {
+          if (!r.ok) throw new Error("no se guardó");
+          const { entrada } = (await r.json()) as { entrada: Entrada | null };
+          setMarcas((prev) => {
+            const n = { ...prev };
+            if (entrada) n[animeId] = entrada;
+            else delete n[animeId];
             return n;
           });
-        },
-        sinMotion ? 0 : MS_DESCARTE,
-      );
-    } else {
-      // Optimista: el toque se ve al instante, el servidor confirma después.
-      // Tocar la marca que ya está puesta la quita — marcar sin poder
-      // desmarcar convierte un toque de más en un error permanente.
-      setMarcas((prev) => {
-        const n = { ...prev };
-        if (n[anime.id] === marca) delete n[anime.id];
-        else n[anime.id] = marca;
-        return n;
-      });
-    }
+        })
+        .catch(() => {
+          setAviso("No pude guardar eso. Tu lista quedó como estaba.");
+        });
+    },
+    [],
+  );
 
-    void fetch("/api/lista", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ animeId: anime.id, marca }),
-    })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("no se guardó");
-        // El servidor manda la marca que quedó de verdad: se adopta esa, no
-        // la que adivinamos, por si las dos versiones se separaron.
-        const { marca: quedo } = (await r.json()) as { marca: Marca | null };
+  const marcarAnime = useCallback(
+    (anime: Anime, marca: Marca) => {
+      // OJO: la llamada al servidor va FUERA de cualquier updater de useState.
+      // React ejecuta los updaters dos veces en desarrollo; meter el fetch
+      // adentro manda la petición dos veces (ya nos pasó con las portadas).
+      if (marca === "descartado") {
+        // Se va con la animación — y deja un "Deshacer" de 7 segundos, porque
+        // descartar pesa en todas las recomendaciones que siguen y un toque
+        // accidental no debe envenenarlas para siempre.
+        setSaliendo((s) => new Set(s).add(anime.id));
+        const sinMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        window.setTimeout(
+          () => {
+            setTarjetas((previas) => {
+              const indice = previas.findIndex((x) => x.anime.id === anime.id);
+              if (indice !== -1) {
+                setDeshacer({ tarjeta: previas[indice], indice });
+                if (relojDeshacer.current) window.clearTimeout(relojDeshacer.current);
+                relojDeshacer.current = window.setTimeout(
+                  () => setDeshacer(null),
+                  MS_DESHACER,
+                );
+              }
+              return previas.filter((x) => x.anime.id !== anime.id);
+            });
+            setSaliendo((s) => {
+              const n = new Set(s);
+              n.delete(anime.id);
+              return n;
+            });
+          },
+          sinMotion ? 0 : MS_DESCARTE,
+        );
+      } else {
+        // Optimista: el toque se ve al instante, el servidor confirma después.
+        // Tocar la marca que ya está puesta la quita.
         setMarcas((prev) => {
           const n = { ...prev };
-          if (quedo) n[anime.id] = quedo;
-          else delete n[anime.id];
+          if (n[anime.id]?.marca === marca) delete n[anime.id];
+          else n[anime.id] = { marca, episodio: null, calificacion: null };
           return n;
         });
-      })
-      .catch(() => {
-        setAviso("No pude guardar eso. Tu lista quedó como estaba.");
-      });
-  }, []);
+      }
+      persistir(anime.id, marca);
+    },
+    [persistir],
+  );
+
+  /** El "Deshacer" del descarte: la tarjeta vuelve a su lugar y la marca se quita. */
+  const deshacerDescarte = useCallback(() => {
+    if (!deshacer) return;
+    setTarjetas((t) => {
+      const n = [...t];
+      n.splice(Math.min(deshacer.indice, n.length), 0, deshacer.tarjeta);
+      return n;
+    });
+    // Volver a mandar "descartado" sobre lo ya descartado lo QUITA (el
+    // interruptor del servidor).
+    persistir(deshacer.tarjeta.anime.id, "descartado");
+    setDeshacer(null);
+    if (relojDeshacer.current) window.clearTimeout(relojDeshacer.current);
+  }, [deshacer, persistir]);
+
+  const calificarAnime = useCallback(
+    (anime: Anime, calificacion: Calificacion) => {
+      // La calificación no cambia el estado: acompaña al que ya tiene
+      // (visto o abandonada).
+      const estado = marcas[anime.id]?.marca === "abandonada" ? "abandonada" : "visto";
+      setMarcas((prev) => ({
+        ...prev,
+        [anime.id]: { ...(prev[anime.id] ?? { marca: estado, episodio: null }), marca: estado, calificacion },
+      }));
+      persistir(anime.id, estado, { calificacion });
+    },
+    [marcas, persistir],
+  );
 
   // --- El arranque de gusto ----------------------------------------------
   function alternar(id: number) {
@@ -296,6 +370,11 @@ export function Pantalla({
       else s.add(id);
       return s;
     });
+    // Cada toque ESCRIBE en la biblioteca, no solo en la parrilla. Antes las
+    // marcas del arranque solo viajaban como texto a la AI y la biblioteca
+    // quedaba vacía — justo el factor de retención desperdiciado.
+    // (El fetch va fuera del updater; ver la nota de arriba.)
+    persistir(id, "visto");
   }
 
   // La reacción al tercer marcado vive aquí, fuera del updater.
@@ -311,9 +390,17 @@ export function Pantalla({
     enviar(`Ya vi ${titulos}. ¿Qué me recomiendas?`);
   }, [marcados, animes, enviar]);
 
-  // El cambio de selección a recomendación ocurre UNA vez y no se revierte.
+  // La recomendación manda, PERO se puede volver a la parrilla a seguir
+  // marcando ("marcandoMas"): cortar el marcado en 3 toques era tirar el
+  // constructor de biblioteca — y la biblioteca es el factor de retención.
   const enRecomendacion =
-    tarjetas.length > 0 || saltado || (pensando && yaArranco.current);
+    !marcandoMas &&
+    (tarjetas.length > 0 || saltado || (pensando && yaArranco.current));
+
+  // El total marcado de verdad (parrilla + tarjetas + chat), para el medidor.
+  const totalMarcados = Object.values(marcas).filter(
+    (e) => e.marca !== "descartado",
+  ).length;
 
   const vitrina = enRecomendacion ? (
     <VitrinaRecomendacion
@@ -323,14 +410,49 @@ export function Pantalla({
       marcas={marcas}
       saliendo={saliendo}
       onMarcar={marcarAnime}
+      onCalificar={calificarAnime}
+      medidor={{
+        marcados: totalMarcados,
+        meta: META_ARRANQUE,
+        onSeguir: () => setMarcandoMas(true),
+      }}
     />
   ) : (
     <VitrinaSeleccion
       animes={animes}
       marcados={marcados}
       onMarcar={alternar}
-      onSaltar={() => setSaltado(true)}
+      onSaltar={() => {
+        setSaltado(true);
+        setMarcandoMas(false);
+      }}
     />
+  );
+
+  // El mensajito de deshacer. 7 segundos, foco en la opción segura.
+  const avisoDeshacer = deshacer && (
+    <div
+      className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 px-4 py-[10px]"
+      style={{
+        top: escritorio ? 76 : 68,
+        background: "var(--c-ink)",
+        color: "var(--c-on-ink)",
+        border: "2px solid var(--c-accent)",
+      }}
+      role="status"
+    >
+      <span className="max-w-[220px] truncate text-[13px]">
+        Descartaste {deshacer.tarjeta.anime.titulo}
+      </span>
+      <button
+        type="button"
+        onClick={deshacerDescarte}
+        className="kicker shrink-0 px-[8px] py-[5px]"
+        style={{ background: "var(--c-accent)", color: "var(--c-paper)" }}
+      >
+        Deshacer
+      </button>
+    </div>
   );
 
   const avisoDemo = demo && (
@@ -365,6 +487,7 @@ export function Pantalla({
         className="flex h-screen overflow-hidden"
         style={{ background: "var(--c-paper)" }}
       >
+        {avisoDeshacer}
         {chat}
         <div className="flex min-w-0 flex-1 flex-col">
           <header
@@ -397,6 +520,7 @@ export function Pantalla({
         background: "var(--c-paper)",
       }}
     >
+      {avisoDeshacer}
       <header
         className="flex shrink-0 items-center gap-[10px] px-4"
         style={{ height: 56, borderBottom: "var(--borde-koma)" }}

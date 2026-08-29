@@ -2,7 +2,7 @@
 
 import { Bookmark, Check, Eye, X } from "lucide-react";
 import type { Anime } from "@/lib/anime/catalogo";
-import type { Marca } from "@/lib/lista";
+import type { Calificacion, Entrada, Marca } from "@/lib/lista";
 import { Portada } from "./Vitrina";
 
 /**
@@ -39,10 +39,17 @@ function duracion(anime: Anime): string | null {
 type Props = {
   anime: Anime;
   razon: string;
-  marca: Marca | null;
+  entrada: Entrada | null;
   saliendo: boolean;
   onMarcar: (marca: Marca) => void;
+  onCalificar: (calificacion: Calificacion) => void;
   onAbrir?: () => void;
+};
+
+const ETIQUETA_CALIF: Record<Calificacion, string> = {
+  no_fue_lo_mio: "No fue lo mío",
+  estuvo_bien: "Estuvo bien",
+  me_encanto: "Me encantó",
 };
 
 /** Un botón del pie. Los tres son idénticos salvo el ícono y la etiqueta. */
@@ -80,11 +87,13 @@ function BotonMarca({
 export function TarjetaAnime({
   anime,
   razon,
-  marca,
+  entrada,
   saliendo,
   onMarcar,
+  onCalificar,
   onAbrir,
 }: Props) {
+  const marca = entrada?.marca ?? null;
   const estado = anime.estado ? ESTADOS[anime.estado] : null;
   // El romaji solo si aporta: repetir el mismo título dos veces es ruido.
   const romaji =
@@ -126,6 +135,16 @@ export function TarjetaAnime({
             <p className="font-display mt-2 text-[13px] leading-tight">
               {[duracion(anime), estado].filter(Boolean).join(" · ")}
             </p>
+
+            {/* La memoria, visible. Que la tarjeta diga "vas en el 8" la
+                próxima vez que aparezca ES lo que hace notar que la app te
+                conoce — sin esto la memoria existe y nadie lo nota. */}
+            {(marca === "viendo" || marca === "abandonada") && (
+              <p className="kicker mt-1" style={{ color: "var(--c-accent-700)" }}>
+                {marca === "viendo" ? "La estás viendo" : "La dejaste"}
+                {entrada?.episodio ? ` · ep. ${entrada.episodio}` : ""}
+              </p>
+            )}
             {anime.anio && (
               <p className="text-[11px]" style={{ color: "var(--c-muted)" }}>
                 {anime.anio}
@@ -195,6 +214,43 @@ export function TarjetaAnime({
           onClick={() => onMarcar("descartado")}
         />
       </div>
+
+      {/* La calificación de 3 estados (DESIGN.md: NUNCA estrellas ni escalas
+          numéricas). Aparece solo cuando ya la vio o la dejó — antes no hay
+          nada que calificar. */}
+      {(marca === "visto" || marca === "abandonada") && (
+        <div
+          className="grid grid-cols-3"
+          style={{
+            gap: "var(--gap-koma)",
+            background: "var(--c-ink)",
+            borderTop: "var(--borde-koma)",
+          }}
+        >
+          {(Object.keys(ETIQUETA_CALIF) as Calificacion[]).map((c) => {
+            const activa = entrada?.calificacion === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                aria-pressed={activa}
+                onClick={() => onCalificar(c)}
+                className="flex min-h-[40px] w-full items-center justify-center gap-[5px] px-2 py-2 text-center text-[11px] leading-tight"
+                style={{
+                  background: activa ? "var(--c-accent)" : "var(--c-surface)",
+                  color: activa ? "var(--c-paper)" : "var(--c-muted)",
+                  fontFamily: "var(--font-body)",
+                  fontWeight: 700,
+                }}
+              >
+                {/* El estado nunca se marca solo con color. */}
+                {activa && <Check size={13} strokeWidth={2.4} aria-hidden />}
+                {ETIQUETA_CALIF[c]}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </article>
   );
 }

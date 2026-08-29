@@ -1,6 +1,14 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 import { buscarPorTitulo, type Anime } from "../anime/catalogo.ts";
+import { sugerencias } from "../anime/buscar.ts";
+import {
+  esCalificacion,
+  esMarca,
+  marcar,
+  type Entrada,
+  type Marca,
+} from "../lista.ts";
 
 /** Tope de caracteres del porqué. Ver docs/designs/experiencia-y-estados.md §4. */
 export const MAX_RAZON = 90;
@@ -38,6 +46,53 @@ export const HERRAMIENTAS: Anthropic.Tool[] = [
         },
       },
       required: ["titulo", "razon"],
+    },
+  },
+  {
+    name: "actualizar_lista",
+    description:
+      "Escribe en la biblioteca del usuario lo que ÉL MISMO acaba de contarte " +
+      "sobre una serie: que la está viendo (y en qué episodio va), que la " +
+      "terminó, que la dejó, que quiere verla, que no se la recomienden más, " +
+      "o qué le pareció. Llámala una vez por serie mencionada; si el mensaje " +
+      "trae varias ('acabé Frieren y voy en el 3 de Dandadan'), llámala una " +
+      "vez por cada una. SOLO registra hechos que la persona afirmó de sí " +
+      "misma — nunca deducciones tuyas, nunca hipótesis, nunca series que " +
+      "solo se mencionaron de pasada.",
+    input_schema: {
+      type: "object",
+      properties: {
+        titulo: {
+          type: "string",
+          description:
+            "El título de la serie tal como se conoce. Se verifica contra el " +
+            "catálogo igual que en buscar_anime.",
+        },
+        estado: {
+          type: "string",
+          enum: ["quiero_ver", "viendo", "visto", "abandonada", "descartado"],
+          description:
+            "Dónde está la persona con la serie. 'viendo' = la está viendo " +
+            "ahora; 'visto' = la terminó; 'abandonada' = la empezó y la dejó; " +
+            "'quiero_ver' = la apunta para después; 'descartado' = pidió que " +
+            "no se la recomienden más.",
+        },
+        episodio: {
+          type: "integer",
+          description:
+            "En qué episodio va (o en cuál la dejó). Solo con 'viendo' o " +
+            "'abandonada', y solo si la persona dio el número.",
+        },
+        calificacion: {
+          type: "string",
+          enum: ["no_fue_lo_mio", "estuvo_bien", "me_encanto"],
+          description:
+            "Qué le pareció, SOLO si lo dijo: 'me encantó' → me_encanto, " +
+            "'estuvo bien / pasable' → estuvo_bien, 'no me gustó / floja' → " +
+            "no_fue_lo_mio. Solo acompaña a 'visto' o 'abandonada'.",
+        },
+      },
+      required: ["titulo", "estado"],
     },
   },
   {
@@ -99,6 +154,63 @@ export async function verificar(
       estado: anime.estado,
       portada: anime.portada,
     }),
+  };
+}
+
+export type MarcaHecha = { animeId: number; entrada: Entrada | null };
+
+/**
+ * Ejecuta actualizar_lista: verifica el título contra el catálogo (el mismo
+ * candado que buscar_anime — la AI no escribe en tu biblioteca un anime que
+ * no existe) y guarda la marca.
+ */
+export async function actualizarLista(
+  entrada: unknown,
+  dispositivoId: string,
+): Promise<{ hecho: MarcaHecha | null; texto: string }> {
+  const { titulo, estado, episodio, calificacion } = (entrada ?? {}) as {
+    titulo?: string;
+    estado?: string;
+    episodio?: number;
+    calificacion?: string;
+  };
+  if (typeof titulo !== "string" || !titulo.trim() || !esMarca(estado)) {
+    return { hecho: null, texto: "Falta el título o el estado no es válido." };
+  }
+
+  const anime = await buscarPorTitulo(titulo);
+  if (!anime) {
+    // El candado rechaza apodos cortos ("Frieren" vs "Sousou no Frieren").
+    // Antes de rendirse, se le da a la AI el pariente más cercano del
+    // catálogo: si ella sabe que es la misma obra, reintenta con el título
+    // exacto y la persona ni se entera de la fricción.
+    const parecidos = await sugerencias(titulo).catch(() => []);
+    const pista = parecidos[0]
+      ? ` El más parecido del catálogo es "${parecidos[0].titulo}". Si estás ` +
+        `seguro de que la persona se refiere a ese, vuelve a llamar la ` +
+        `herramienta con ese título exacto; si dudas, pregúntale.`
+      : ` Pídele a la persona el título exacto.`;
+    return {
+      hecho: null,
+      texto:
+        `No hay ningún anime que se llame "${titulo}" en el catálogo. No se ` +
+        `guardó nada.${pista}`,
+    };
+  }
+
+  const quedo = await marcar(dispositivoId, anime.id, estado as Marca, {
+    episodio: typeof episodio === "number" ? episodio : null,
+    calificacion: esCalificacion(calificacion) ? calificacion : null,
+  });
+
+  return {
+    hecho: { animeId: anime.id, entrada: quedo },
+    texto: quedo
+      ? `Guardado: ${anime.titulo} → ${quedo.marca}` +
+        (quedo.episodio ? `, episodio ${quedo.episodio}` : "") +
+        (quedo.calificacion ? `, ${quedo.calificacion}` : "") +
+        ". Confírmaselo en una frase corta, sin ceremonia."
+      : `${anime.titulo} quedó fuera de su lista.`,
   };
 }
 

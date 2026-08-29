@@ -1,4 +1,5 @@
 import type { Anime } from "../anime/catalogo";
+import type { Entrada } from "../lista";
 
 /**
  * Los eventos que viajan por el canal de /api/chat.
@@ -10,6 +11,9 @@ export type Evento =
   | { tipo: "tarjeta"; anime: Anime; razon: string }
   | { tipo: "texto"; texto: string }
   | { tipo: "chips"; chips: string[] }
+  // La AI escribió en la biblioteca ("voy en el 8 de Frieren"): la pantalla
+  // debe reflejarlo sin recargar, o la memoria existe y nadie la nota.
+  | { tipo: "marca"; animeId: number; entrada: Entrada | null }
   | { tipo: "fin" }
   | { tipo: "error"; mensaje: string };
 

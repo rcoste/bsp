@@ -5,6 +5,7 @@ import type { Evento, Turno } from "./eventos.ts";
 import {
   HERRAMIENTAS,
   MAX_TARJETAS,
+  actualizarLista as actualizarListaReal,
   limpiarChips,
   verificar as verificarReal,
 } from "./herramientas.ts";
@@ -42,6 +43,9 @@ type Opciones = {
   /** Lo que ya sabemos del gusto de esta persona. Viaja como mensaje, nunca
    *  en las instrucciones del sistema: ahí rompería el caché para todos. */
   perfil: string;
+  /** Para que actualizar_lista pueda escribir la biblioteca de ESTE
+   *  dispositivo. Sin él, la herramienta contesta que no puede guardar. */
+  dispositivoId?: string;
   emitir: (evento: Evento) => void;
   señal: AbortSignal;
   /** Solo para las pruebas: deja sustituir la API y el catálogo. En producción
@@ -49,6 +53,7 @@ type Opciones = {
   postizos?: {
     cliente?: Pick<Anthropic, "messages">;
     verificar?: typeof verificarReal;
+    actualizarLista?: typeof actualizarListaReal;
   };
 };
 
@@ -65,12 +70,14 @@ export async function conversar({
   historial,
   mensaje,
   perfil,
+  dispositivoId,
   emitir,
   señal,
   postizos,
 }: Opciones): Promise<Medicion> {
   const cliente = postizos?.cliente ?? new Anthropic();
   const verificar = postizos?.verificar ?? verificarReal;
+  const actualizarLista = postizos?.actualizarLista ?? actualizarListaReal;
   const arranque = Date.now();
   const consumo = consumoVacio();
   let msPrimeraTarjeta: number | null = null;
@@ -158,6 +165,22 @@ export async function conversar({
           const propuestos = limpiarChips(uso.input);
           if (propuestos.length) chips = propuestos;
           return { type: "tool_result", tool_use_id: uso.id, content: "Anotados." };
+        }
+
+        if (uso.name === "actualizar_lista") {
+          // Sin dispositivo (pruebas, demo) no hay biblioteca que escribir.
+          if (!dispositivoId) {
+            return {
+              type: "tool_result",
+              tool_use_id: uso.id,
+              content: "Ahora mismo no puedo guardar en la lista. Sigue sin guardar.",
+            };
+          }
+          const { hecho, texto } = await actualizarLista(uso.input, dispositivoId);
+          // La pantalla se entera al instante: sin esto la memoria existe
+          // pero nadie la ve, y verse es la mitad del producto.
+          if (hecho) emitir({ tipo: "marca", ...hecho });
+          return { type: "tool_result", tool_use_id: uso.id, content: texto };
         }
 
         if (uso.name !== "buscar_anime") {

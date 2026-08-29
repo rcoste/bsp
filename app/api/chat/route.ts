@@ -141,6 +141,7 @@ export async function POST(request: Request) {
             historial: cuerpo.historial,
             mensaje: cuerpo.mensaje,
             perfil,
+            dispositivoId,
             emitir,
             señal: request.signal,
           });

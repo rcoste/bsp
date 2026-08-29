@@ -1,7 +1,7 @@
 "use client";
 
 import type { Anime } from "@/lib/anime/catalogo";
-import type { Marca } from "@/lib/lista";
+import type { Calificacion, Entrada, Marca } from "@/lib/lista";
 import { TarjetaAnime } from "./TarjetaAnime";
 
 export type Tarjeta = { anime: Anime; razon: string };
@@ -18,9 +18,13 @@ type Props = {
   tarjetas: Tarjeta[];
   ancla: string;
   cargando: boolean;
-  marcas: Record<number, Marca>;
+  marcas: Record<number, Entrada>;
   saliendo: Set<number>;
   onMarcar: (anime: Anime, marca: Marca) => void;
+  onCalificar: (anime: Anime, calificacion: Calificacion) => void;
+  /** Volver a la parrilla de marcado. Visible mientras no llegue a la meta:
+   *  la biblioteca del día uno es EL factor de retención (46% vs 6%). */
+  medidor?: { marcados: number; meta: number; onSeguir: () => void };
   onAbrir?: (anime: Anime) => void;
 };
 
@@ -64,18 +68,32 @@ export function VitrinaRecomendacion({
   marcas,
   saliendo,
   onMarcar,
+  onCalificar,
+  medidor,
   onAbrir,
 }: Props) {
   return (
     <div className="anim-view h-full overflow-y-auto overscroll-contain px-4 pb-4 md:px-6">
       {/* El encabezado ancla. Sin él, quien sube en la conversación ve un
           mensaje viejo junto a una vitrina nueva, y la app le está mintiendo. */}
-      <p
-        className="kicker sticky top-0 z-10 pt-4 pb-2"
-        style={{ background: "var(--c-paper)", color: "var(--c-accent-700)" }}
+      <div
+        className="sticky top-0 z-10 flex items-center gap-2 pt-4 pb-2"
+        style={{ background: "var(--c-paper)" }}
       >
-        Para: {ancla || "tus gustos"}
-      </p>
+        <p className="kicker min-w-0 flex-1" style={{ color: "var(--c-accent-700)" }}>
+          Para: {ancla || "tus gustos"}
+        </p>
+        {medidor && medidor.marcados < medidor.meta && (
+          <button
+            type="button"
+            onClick={medidor.onSeguir}
+            className="kicker shrink-0 px-[8px] py-[5px]"
+            style={{ border: "1px solid var(--c-ink)" }}
+          >
+            Marcar vistos · {medidor.marcados}/{medidor.meta}
+          </button>
+        )}
+      </div>
 
       {cargando && tarjetas.length === 0 ? (
         <Siluetas />
@@ -96,9 +114,10 @@ export function VitrinaRecomendacion({
               <TarjetaAnime
                 anime={anime}
                 razon={razon}
-                marca={marcas[anime.id] ?? null}
+                entrada={marcas[anime.id] ?? null}
                 saliendo={saliendo.has(anime.id)}
                 onMarcar={(marca) => onMarcar(anime, marca)}
+                onCalificar={(c) => onCalificar(anime, c)}
                 onAbrir={onAbrir ? () => onAbrir(anime) : undefined}
               />
             </li>

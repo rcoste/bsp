@@ -662,6 +662,31 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 (las dos banderas extra son para que los módulos marcados `server-only` se puedan importar fuera de Next)
 **Scripts útiles:** `scripts/migrar.mjs`, `scripts/semilla-catalogo.mjs`, `scripts/verificar-db.mjs`
 
+## Feedback de socios incorporado (2026-08-28)
+
+Del feedback de Pablo y Alberto (`docs-para-claude-bsp/feedback pablo y alberto/`,
+con datos de producción de 1,982 usuarios) se incorporó:
+
+- **Biblioteca con 5 estados** (quiero_ver / viendo / visto / abandonada / descartado)
+  + **episodio en el que vas** + calificación de 3 estados. Estado y calificación son
+  EJES SEPARADOS ("¿dónde estás?" vs "¿qué te pareció?") — no fusionarlos.
+- **El chat escribe la biblioteca hablando** (`actualizar_lista` en `lib/chat/herramientas.ts`):
+  "acabé Frieren y voy en el 3 de Dandadan" registra las DOS. Si el título es un apodo
+  corto que el candado rechaza ("Frieren"), la herramienta le pasa a la AI el pariente
+  más cercano del catálogo y ella reintenta con el título exacto.
+- **El arranque de gusto ya no se corta en 3**: parrilla de 24, medidor visible hacia 20
+  (producción: ~20 títulos día uno → 46% de regreso; 1-2 → 6%), botón "Marcar vistos·N/20"
+  para volver a la parrilla, y **cada toque escribe `visto` en la biblioteca** (antes solo
+  viajaba como texto y la biblioteca quedaba vacía).
+- **Deshacer al descartar** (7 s, como manda DESIGN.md): un toque accidental en
+  "No, otra cosa" ya no envenena las recomendaciones para siempre.
+- **Calificación en la tarjeta**: aparece al marcar "Ya lo vi" (o abandonada).
+
+NO se incorporó (con acuerdo del propio feedback): calificar por episodio, panel de
+filtros por género, pantalla de puertas, estadísticas de consumo. El AGENT-TOOLS.md
+del feedback tampoco aplica: es el port del prototipo a la arquitectura de bucle de
+herramientas que esta app ya tiene de nacimiento.
+
 **Lo que falta:**
 1. **La hoja de detalle** (sinopsis sin spoilers + dónde verlo + relacionados). Las sinopsis del catálogo están en INGLÉS; la columna `sinopsis_es` existe y está vacía — hay que generarla con la AI bajo demanda, no traducir 25 mil por adelantado.
 2. Cuenta por correo.

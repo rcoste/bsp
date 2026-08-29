@@ -85,7 +85,8 @@ export function VitrinaSeleccion({ animes, marcados, onMarcar, onSaltar }: Props
       </p>
       <h1 className="titulo-seccion mb-1">¿Cuál de estos has visto?</h1>
       <p className="mb-3 text-[13px]" style={{ color: "var(--c-muted)" }}>
-        Al tercer toque arranco solo.{" "}
+        Al tercer toque te empiezo a recomendar — y entre más marques, mejor te
+        leo.{" "}
         <button
           type="button"
           onClick={onSaltar}
@@ -144,8 +145,18 @@ export function VitrinaSeleccion({ animes, marcados, onMarcar, onSaltar }: Props
         })}
       </ul>
 
+      {/* El medidor. En producción del producto original, quien arma ~20
+          títulos el día uno vuelve 46%; quien arma 1-2, vuelve 6%. La meta
+          visible existe para empujar hacia ese número, no de adorno. */}
       <p className="mt-3 text-[11px]" style={{ color: "var(--c-muted)" }}>
-        {marcados.size} marcada{marcados.size === 1 ? "" : "s"} · al tercer toque arranco solo
+        {marcados.size < 20 ? (
+          <>
+            Llevas <strong style={{ color: "var(--c-ink)" }}>{marcados.size}</strong>
+            {" "}· con ~20 te leo completo
+          </>
+        ) : (
+          <>Llevas {marcados.size} — con esto ya te leo clarito.</>
+        )}
       </p>
     </div>
   );
