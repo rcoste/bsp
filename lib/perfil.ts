@@ -16,11 +16,7 @@ const CALIFICACIONES: Record<string, string> = {
 
 /** Devuelve el perfil, creándolo si es la primera visita de este dispositivo. */
 export async function perfilDe(dispositivoId: string): Promise<string> {
-  const [perfil] = await sql<{ id: string }[]>`
-    insert into perfiles (dispositivo_id) values (${dispositivoId})
-    on conflict (dispositivo_id) do update set actualizado_en = now()
-    returning id
-  `;
+  const perfil = { id: await idDePerfil(dispositivoId) };
 
   const filas = await sql<
     { titulo: string; estado: string; episodio: number | null; calificacion: string | null }[]
@@ -74,12 +70,24 @@ export async function perfilDe(dispositivoId: string): Promise<string> {
   return partes.join("\n");
 }
 
-/** El id interno del perfil, para escribir en su lista. */
+/**
+ * El id interno del perfil, para escribir en su lista.
+ *
+ * Toda petición que pasa por aquí la hizo una persona con la app abierta
+ * (marcar, platicar, cargar la pantalla con su cookie), así que también anota
+ * el día como día de uso: es lo que cuenta como "regresó" para Google Ads.
+ */
 export async function idDePerfil(dispositivoId: string): Promise<string> {
   const [perfil] = await sql<{ id: string }[]>`
-    insert into perfiles (dispositivo_id) values (${dispositivoId})
-    on conflict (dispositivo_id) do update set actualizado_en = now()
-    returning id
+    with p as (
+      insert into perfiles (dispositivo_id) values (${dispositivoId})
+      on conflict (dispositivo_id) do update set actualizado_en = now()
+      returning id
+    ), dia as (
+      insert into actividad_dias (perfil_id) select id from p
+      on conflict (perfil_id, dia) do update set ultima = now()
+    )
+    select id from p
   `;
   return perfil.id;
 }

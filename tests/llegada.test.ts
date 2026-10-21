@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { leerLlegada, leerOrigen } from "../lib/llegada.ts";
+import { leerClic, leerLlegada, leerOrigen } from "../lib/llegada.ts";
 
 /**
  * La clasificación de la búsqueda de aterrizaje decide si se gasta una
@@ -69,5 +69,26 @@ describe("leerOrigen", () => {
     assert.equal(leerOrigen(null, "verano"), "verano");
     assert.equal(leerOrigen(null, null), null);
     assert.equal(leerOrigen("", "  "), null);
+  });
+});
+
+describe("leerClic", () => {
+  it("guarda el boleto de Google tal cual", () => {
+    const gclid = "Cj0KCQjw_abc-123XYZ";
+    assert.deepEqual(leerClic({ gclid }), { gclid, gbraid: null, wbraid: null });
+    assert.deepEqual(leerClic({ wbraid: "  ClgKEwiP9abcdef  " }), {
+      gclid: null,
+      gbraid: null,
+      wbraid: "ClgKEwiP9abcdef",
+    });
+  });
+
+  it("sin boleto válido no hay clic", () => {
+    assert.equal(leerClic({}), null);
+    assert.equal(leerClic({ gclid: "" }), null);
+    assert.equal(leerClic({ gclid: 123 }), null);
+    assert.equal(leerClic({ gclid: "corto" }), null);
+    assert.equal(leerClic({ gclid: "<script>alert(1)</script>" }), null);
+    assert.equal(leerClic({ gclid: "a".repeat(201) }), null);
   });
 });

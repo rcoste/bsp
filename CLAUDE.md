@@ -699,6 +699,17 @@ Los documentos de planning asumen que la app **se comparte por WhatsApp** — o 
 - **Dos carriles de costo** (`lib/llegada.ts`): las búsquedas **genéricas** ("qué anime ver") las contesta la parrilla ya renderizada, **gratis**; solo las **específicas** gastan la conversación (~$0.01). Sin ese reparto, mil clics de una campaña genérica se comen la mitad del tope mensual en rebotes. `tests/llegada.test.ts` cubre la clasificación — ya cazó un error que habría gastado AI en cada clic de la campaña "anime en español".
 - **El disparo vive en el NAVEGADOR, no en el servidor.** Los rastreadores y bots que no ejecutan JavaScript no crean perfiles fantasma ni gastan conversaciones.
 
+## Medición para Google Ads (2026-10-21)
+
+BSP entra al laboratorio de campañas de Roberto (repo `campanas-binge-senpai`): Performance Max en México, en su propia subcuenta de Kublau Iniciativas, juzgada contra Binge Senpai por costo por usuario que **regresa**. BSP reporta las mismas dos conversiones que Binge Senpai, con el mismo nombre y valor (MXN): **"Shelf 20 shows (day 0)"** (2) y **"Engaged return (7d)"** (13).
+
+- **La persona es el dispositivo** (decisión de Roberto, 2026-10-21): no hay cuentas, y la llegada es `perfiles.creado_en`. Cambiar de celular o borrar cookies no cuenta como regreso; el error va en contra de BSP, a propósito.
+- **Boleto del clic:** `gclid` / `gbraid` / `wbraid` se leen en `app/page.tsx`, viajan con `/api/llegada` y se guardan solo el primero (`perfiles.clic_en`). Solo cuenta quien llegó por el anuncio: clic dentro de la primera hora de su perfil.
+- **20 animes** = la serie número 20 marcada en las primeras 24 h, cualquier estado menos `descartado` (decisión de Roberto).
+- **Regreso** = cualquier uso entre las 24 h y los 7 días. Los días de uso viven en `actividad_dias`, que anotan `/api/llegada` e `idDePerfil` (toda petición de la persona).
+- **Detección y entrega:** `lib/medicion.ts` congela la hora de cada conversión en `conversiones_ads` (para que el reenvío diario no duplique en Google) y `POST /api/ads/conversiones` (cabecera `x-laboratorio-secreto` = `ADS_SECRETO`) las entrega al script de Google Ads del laboratorio, que las sube a la cuenta de BSP. Pruebas: `tests/medicion.test.ts`.
+- **Pendiente:** publicar BSP, crear la subcuenta con esas dos conversiones (tipo "importar desde clics") y conectar el script. Las subidas por script solo aceptan `gclid`; los clics de iPhone que solo traen `gbraid`/`wbraid` se guardan pero no se suben todavía.
+
 **La medición es la mitad del trabajo:** `/api/llegada` registra origen y búsqueda **aunque la visita no haga nada** (si no, los rebotes —que también se pagan— son invisibles), y `node scripts/reporte-campanas.mjs` contesta la única pregunta que importa: **cuánto cuesta un usuario que construyó biblioteca**, no cuánto cuesta un clic. El `origen` se escribe solo la primera vez: la campaña que pagó por traer a alguien no pierde el mérito si vuelve por otra.
 
 **La vitrina en reposo (`lib/inicio.ts`)** implementa §3b del alcance: nunca está vacía, y lo que muestra depende de quién llegó. Tres puertas, decididas en el servidor sin gastar AI:

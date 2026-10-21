@@ -88,6 +88,28 @@ export function leerLlegada(crudo: string | undefined | null): Llegada {
   return { consulta, vale: true };
 }
 
+/** El boleto del clic de Google Ads. Sin él no hay conversión que subir. */
+export type Clic = { gclid: string | null; gbraid: string | null; wbraid: string | null };
+
+/** Base64 web de Google; nada más largo que esto es un boleto real. */
+const BOLETO = /^[A-Za-z0-9_-]{10,200}$/;
+
+/** Limpia los tres boletos posibles. null si no trae ninguno válido. */
+export function leerClic(crudo: {
+  gclid?: unknown;
+  gbraid?: unknown;
+  wbraid?: unknown;
+}): Clic | null {
+  const limpio = (v: unknown) =>
+    typeof v === "string" && BOLETO.test(v.trim()) ? v.trim() : null;
+  const clic = {
+    gclid: limpio(crudo.gclid),
+    gbraid: limpio(crudo.gbraid),
+    wbraid: limpio(crudo.wbraid),
+  };
+  return clic.gclid || clic.gbraid || clic.wbraid ? clic : null;
+}
+
 /** El origen de la campaña, para poder medir por grupo de anuncios. */
 export function leerOrigen(
   utmSource: string | undefined | null,

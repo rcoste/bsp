@@ -61,6 +61,11 @@ export default async function Home({
         preguntar: llegada.vale,
         origen: unico(params.utm_source) ?? null,
         campana: unico(params.utm_campaign) ?? null,
+        // El boleto del clic de Google Ads, para poder decirle qué anuncio
+        // trajo a alguien que se quedó. Se valida en /api/llegada.
+        gclid: unico(params.gclid) ?? null,
+        gbraid: unico(params.gbraid) ?? null,
+        wbraid: unico(params.wbraid) ?? null,
       }}
     />
   );

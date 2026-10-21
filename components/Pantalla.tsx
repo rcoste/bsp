@@ -33,6 +33,9 @@ export type Llegada = {
   preguntar: boolean;
   origen: string | null;
   campana: string | null;
+  gclid: string | null;
+  gbraid: string | null;
+  wbraid: string | null;
 };
 
 export function Pantalla({
@@ -433,6 +436,9 @@ export function Pantalla({
         q: llegada.consulta,
         utm_source: llegada.origen,
         utm_campaign: llegada.campana,
+        gclid: llegada.gclid,
+        gbraid: llegada.gbraid,
+        wbraid: llegada.wbraid,
       }),
     }).catch(() => {
       // Telemetría: que falle no le estorba a quien vino a usar la app.
