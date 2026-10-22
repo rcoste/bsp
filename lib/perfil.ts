@@ -70,24 +70,26 @@ export async function perfilDe(dispositivoId: string): Promise<string> {
   return partes.join("\n");
 }
 
-/**
- * El id interno del perfil, para escribir en su lista.
- *
- * Toda petición que pasa por aquí la hizo una persona con la app abierta
- * (marcar, platicar, cargar la pantalla con su cookie), así que también anota
- * el día como día de uso: es lo que cuenta como "regresó" para Google Ads.
- */
+/** El id interno del perfil, para escribir en su lista. */
 export async function idDePerfil(dispositivoId: string): Promise<string> {
   const [perfil] = await sql<{ id: string }[]>`
-    with p as (
-      insert into perfiles (dispositivo_id) values (${dispositivoId})
-      on conflict (dispositivo_id) do update set actualizado_en = now()
-      returning id
-    ), dia as (
-      insert into actividad_dias (perfil_id) select id from p
-      on conflict (perfil_id, dia) do update set ultima = now()
-    )
-    select id from p
+    insert into perfiles (dispositivo_id) values (${dispositivoId})
+    on conflict (dispositivo_id) do update set actualizado_en = now()
+    returning id
   `;
   return perfil.id;
+}
+
+/**
+ * Anota el día como día de uso: es lo que cuenta como "regresó" para Google
+ * Ads (lib/medicion.ts). Solo lo llaman las acciones de la persona —marcar,
+ * calificar, abrir sus guardados, platicar—, igual que en Binge Senpai, donde
+ * abrir la app sin hacer nada no cuenta como regreso.
+ */
+export async function anotarActividad(dispositivoId: string): Promise<void> {
+  await sql`
+    insert into actividad_dias (perfil_id)
+    select id from perfiles where dispositivo_id = ${dispositivoId}
+    on conflict (perfil_id, dia) do update set ultima = now()
+  `;
 }

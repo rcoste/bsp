@@ -1,7 +1,7 @@
 import "server-only";
 import { datosDeTarjeta, type Anime } from "./anime/catalogo.ts";
 import { sql } from "./db.ts";
-import { idDePerfil } from "./perfil.ts";
+import { anotarActividad, idDePerfil } from "./perfil.ts";
 
 /**
  * La biblioteca personal: estados, progreso y calificación.
@@ -66,6 +66,7 @@ export async function marcar(
   extras?: { episodio?: number | null; calificacion?: Calificacion | null },
 ): Promise<Entrada | null> {
   const perfilId = await idDePerfil(dispositivoId);
+  await anotarActividad(dispositivoId);
 
   const episodio =
     (marca === "viendo" || marca === "abandonada") &&
@@ -114,6 +115,7 @@ export async function calificar(
   calificacion: Calificacion,
 ): Promise<void> {
   const perfilId = await idDePerfil(dispositivoId);
+  await anotarActividad(dispositivoId);
   await sql`
     update listas set calificacion = ${calificacion}, actualizado_en = now()
      where perfil_id = ${perfilId} and anime_id = ${animeId}

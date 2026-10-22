@@ -2,6 +2,7 @@ import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { sql } from "../lib/db.ts";
+import { marcar } from "../lib/lista.ts";
 import { idDePerfil } from "../lib/perfil.ts";
 import { conversionesRecientes, detectarConversiones } from "../lib/medicion.ts";
 
@@ -178,13 +179,19 @@ describe("lo que se manda a Google", () => {
 });
 
 describe("días de uso", () => {
-  it("cada petición de la persona anota el día, una vez por día", async () => {
-    const dispositivo = `${PREFIJO}-uso`;
-    const id = await idDePerfil(dispositivo);
-    await idDePerfil(dispositivo);
-    const filas = await sql<{ primera: Date; ultima: Date }[]>`
-      select primera, ultima from actividad_dias where perfil_id = ${id}
-    `;
+  const diasDe = (id: string) =>
+    sql<{ primera: Date; ultima: Date }[]>`select primera, ultima from actividad_dias where perfil_id = ${id}`;
+
+  it("abrir la app sin hacer nada no cuenta, como en Binge Senpai", async () => {
+    const id = await idDePerfil(`${PREFIJO}-solo-abre`);
+    assert.equal((await diasDe(id)).length, 0);
+  });
+
+  it("marcar anota el día, una vez por día", async () => {
+    const dispositivo = `${PREFIJO}-marca`;
+    await marcar(dispositivo, 1535, "visto");
+    await marcar(dispositivo, 52991, "quiero_ver");
+    const filas = await diasDe(await idDePerfil(dispositivo));
     assert.equal(filas.length, 1);
     assert.ok(filas[0].ultima.getTime() >= filas[0].primera.getTime());
   });

@@ -2,7 +2,7 @@ import { conversar, hayLlave, type Evento, type Turno } from "@/lib/chat/bucle";
 import { conversarDemo, enDemo } from "@/lib/chat/demo";
 import { registrarGasto } from "@/lib/chat/gasto";
 import { registrarError } from "@/lib/db";
-import { idDePerfil, perfilDe } from "@/lib/perfil";
+import { anotarActividad, idDePerfil, perfilDe } from "@/lib/perfil";
 import { NOMBRE_COOKIE, leerDispositivo, nuevoDispositivo } from "@/lib/sesion";
 import { TOPE_DISPOSITIVO, cobrarMensaje, direccionReal } from "@/lib/topes";
 
@@ -118,6 +118,14 @@ export async function POST(request: Request) {
         await registrarError("/api/chat:perfil", error, { dispositivoId });
         return "";
       });
+
+  // Mandar un mensaje es usar la app: cuenta para "regresó" (lib/medicion.ts).
+  // perfilDe ya creó el perfil; en demo no hay nada que medir.
+  if (!demo) {
+    await anotarActividad(dispositivoId).catch((error) =>
+      registrarError("/api/chat:actividad", error, { dispositivoId }),
+    );
+  }
 
   const codificador = new TextEncoder();
   const flujo = new ReadableStream({

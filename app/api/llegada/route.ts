@@ -39,27 +39,23 @@ export async function POST(request: Request) {
     // por otra campaña, la que pagó por traerlo sigue siendo la primera.
     // Sobrescribir le regalaría el mérito a la última.
     //
-    // Abrir la app también cuenta como un día de uso (actividad_dias): es lo
-    // que dice si alguien regresó en su primera semana.
+    // Abrir la app NO cuenta como día de uso: en Binge Senpai tampoco, y el
+    // regreso de las dos apuestas tiene que medirse igual (ver lib/perfil.ts,
+    // anotarActividad).
     await sql`
-      with p as (
-        insert into perfiles (dispositivo_id, origen, consulta_llegada, gclid, gbraid, wbraid, clic_en)
-        values (
-          ${dispositivoId}, ${origen}, ${consulta || null},
-          ${clic?.gclid ?? null}, ${clic?.gbraid ?? null}, ${clic?.wbraid ?? null},
-          case when ${clic !== null}::boolean then now() end
-        )
-        on conflict (dispositivo_id) do update set
-          origen = coalesce(perfiles.origen, excluded.origen),
-          consulta_llegada = coalesce(perfiles.consulta_llegada, excluded.consulta_llegada),
-          gclid = case when perfiles.clic_en is null then excluded.gclid else perfiles.gclid end,
-          gbraid = case when perfiles.clic_en is null then excluded.gbraid else perfiles.gbraid end,
-          wbraid = case when perfiles.clic_en is null then excluded.wbraid else perfiles.wbraid end,
-          clic_en = coalesce(perfiles.clic_en, excluded.clic_en)
-        returning id
+      insert into perfiles (dispositivo_id, origen, consulta_llegada, gclid, gbraid, wbraid, clic_en)
+      values (
+        ${dispositivoId}, ${origen}, ${consulta || null},
+        ${clic?.gclid ?? null}, ${clic?.gbraid ?? null}, ${clic?.wbraid ?? null},
+        case when ${clic !== null}::boolean then now() end
       )
-      insert into actividad_dias (perfil_id) select id from p
-      on conflict (perfil_id, dia) do update set ultima = now()
+      on conflict (dispositivo_id) do update set
+        origen = coalesce(perfiles.origen, excluded.origen),
+        consulta_llegada = coalesce(perfiles.consulta_llegada, excluded.consulta_llegada),
+        gclid = case when perfiles.clic_en is null then excluded.gclid else perfiles.gclid end,
+        gbraid = case when perfiles.clic_en is null then excluded.gbraid else perfiles.gbraid end,
+        wbraid = case when perfiles.clic_en is null then excluded.wbraid else perfiles.wbraid end,
+        clic_en = coalesce(perfiles.clic_en, excluded.clic_en)
     `;
     const respuesta = Response.json({ ok: true });
     if (cookie) respuesta.headers.set("Set-Cookie", cookie);

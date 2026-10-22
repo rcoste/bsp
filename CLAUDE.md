@@ -706,7 +706,7 @@ BSP entra al laboratorio de campañas de Roberto (repo `campanas-binge-senpai`):
 - **La persona es el dispositivo** (decisión de Roberto, 2026-10-21): no hay cuentas, y la llegada es `perfiles.creado_en`. Cambiar de celular o borrar cookies no cuenta como regreso; el error va en contra de BSP, a propósito.
 - **Boleto del clic:** `gclid` / `gbraid` / `wbraid` se leen en `app/page.tsx`, viajan con `/api/llegada` y se guardan solo el primero (`perfiles.clic_en`). Solo cuenta quien llegó por el anuncio: clic dentro de la primera hora de su perfil.
 - **20 animes** = la serie número 20 marcada en las primeras 24 h, cualquier estado menos `descartado` (decisión de Roberto).
-- **Regreso** = cualquier uso entre las 24 h y los 7 días. Los días de uso viven en `actividad_dias`, que anotan `/api/llegada` e `idDePerfil` (toda petición de la persona).
+- **Regreso** = una acción entre las 24 h y los 7 días: marcar, calificar, abrir sus guardados o mandar un mensaje al chat. Abrir la app sin hacer nada no cuenta, igual que en Binge Senpai. Los días de uso viven en `actividad_dias` y los anota `anotarActividad` (`lib/perfil.ts`) desde esas acciones.
 - **Detección y entrega:** `lib/medicion.ts` congela la hora de cada conversión en `conversiones_ads` (para que el reenvío diario no duplique en Google) y `POST /api/ads/conversiones` (cabecera `x-laboratorio-secreto` = `ADS_SECRETO`) las entrega al script de Google Ads del laboratorio, que las sube a la cuenta de BSP. Pruebas: `tests/medicion.test.ts`.
 - **Pendiente:** publicar BSP, crear la subcuenta con esas dos conversiones (tipo "importar desde clics") y conectar el script. Las subidas por script solo aceptan `gclid`; los clics de iPhone que solo traen `gbraid`/`wbraid` se guardan pero no se suben todavía.
 
