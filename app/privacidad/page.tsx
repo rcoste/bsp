@@ -40,9 +40,9 @@ export default function Privacidad() {
 
       <Seccion titulo="Quién es responsable">
         <p>
-          [NOMBRE O RAZÓN SOCIAL DEL RESPONSABLE], con domicilio en [DOMICILIO], es responsable de
+          FREIGHTNOW SA DE CV, con domicilio en Av. Insurgentes Sur 1824, int. 302, col. Florida, C.P. 01030, Ciudad de México, es responsable de
           los datos que se tratan en bsp. Para cualquier tema de privacidad escríbenos a{" "}
-          [CORREO DE CONTACTO].
+          contacto@kublau.com.
         </p>
       </Seccion>
 
@@ -77,7 +77,7 @@ export default function Privacidad() {
           <b>Para medir nuestra publicidad (finalidad secundaria):</b> si llegaste por un anuncio de
           Google, le avisamos a Google Ads si armaste tu lista o regresaste, usando solo el
           identificador del clic. No le mandamos tus mensajes ni tu lista. Si no quieres que usemos
-          tus datos para esto, escríbenos a [CORREO DE CONTACTO] y dejamos de hacerlo; no afecta en
+          tus datos para esto, escríbenos a contacto@kublau.com y dejamos de hacerlo; no afecta en
           nada tu uso de bsp.
         </p>
       </Seccion>
@@ -97,7 +97,7 @@ export default function Privacidad() {
       <Seccion titulo="Tus derechos">
         <p>
           Puedes pedir acceder a tus datos, corregirlos, que los borremos o que dejemos de usarlos
-          (derechos ARCO), o retirar tu consentimiento. Escríbenos a [CORREO DE CONTACTO] desde el
+          (derechos ARCO), o retirar tu consentimiento. Escríbenos a contacto@kublau.com desde el
           mismo navegador o dispositivo que usas en bsp, para que podamos identificar tus datos.
           Te respondemos en un máximo de 20 días hábiles.
         </p>

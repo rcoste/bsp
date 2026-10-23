@@ -35,6 +35,9 @@ export const sql =
     ssl: "require",
     max: 5,
     idle_timeout: 20,
+    // En Vercel la conexión entra por el pooler de transacciones de Supabase
+    // (puerto 6543), que no admite sentencias preparadas.
+    prepare: false,
   });
 
 if (process.env.NODE_ENV !== "production") global.__sql = sql;
