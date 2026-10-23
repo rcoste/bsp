@@ -41,8 +41,35 @@ export type Anime = {
   episodios: number | null;
   /** "tv", "movie", "ova"… Solo para decir "Película" en vez de "1 episodio". */
   tipo: string | null;
+  /** Clasificación de edad en el vocabulario de MyAnimeList: g, pg, pg_13, r,
+   *  r_plus o r_x (hentai). null = sin clasificar, que se trata como apta. */
+  clasificacion: Clasificacion | null;
   donde: Donde[];
 };
+
+export type Clasificacion = "g" | "pg" | "pg_13" | "r" | "r_plus" | "r_x";
+
+/** La única clasificación que la app no recomienda ni muestra en la parrilla. */
+export const ADULTOS: Clasificacion = "r_x";
+
+/**
+ * Jikan entrega la clasificación como frase ("Rx - Hentai", "R+ - Mild
+ * Nudity", "PG-13 - Teens 13 or older"); el catálogo exportado de Pablo la
+ * trae ya en código. Aquí se reduce la frase al mismo código para que una
+ * sola comparación sirva para los dos orígenes.
+ */
+export function clasificacionDeJikan(frase: string | null | undefined): Clasificacion | null {
+  const inicio = (frase ?? "").trim().split(/\s/)[0]?.toLowerCase();
+  switch (inicio) {
+    case "rx": return "r_x";
+    case "r+": return "r_plus";
+    case "r": return "r";
+    case "pg-13": return "pg_13";
+    case "pg": return "pg";
+    case "g": return "g";
+    default: return null;
+  }
+}
 
 type JikanAnime = {
   mal_id: number;
@@ -56,6 +83,7 @@ type JikanAnime = {
   members?: number | null;
   episodes?: number | null;
   type?: string | null;
+  rating?: string | null;
 };
 
 /**
@@ -73,6 +101,7 @@ export function datosDeTarjeta(datos: Anime): Anime {
     portada: datos.portada,
     episodios: datos.episodios ?? null,
     tipo: datos.tipo ?? null,
+    clasificacion: datos.clasificacion ?? null,
     donde: datos.donde ?? [],
   };
 }
@@ -87,6 +116,7 @@ function aAnime(j: JikanAnime): Anime {
     portada: j.images?.jpg?.large_image_url ?? j.images?.jpg?.image_url ?? null,
     episodios: j.episodes ?? null,
     tipo: j.type?.toLowerCase() ?? null,
+    clasificacion: clasificacionDeJikan(j.rating),
     // Jikan no da streaming en /anime/{id}; lo que llega por aquí se queda sin
     // "dónde verlo" hasta que el catálogo exportado lo cubra. Un dato ausente
     // es honesto; uno inventado no.

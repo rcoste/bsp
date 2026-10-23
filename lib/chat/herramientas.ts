@@ -1,6 +1,6 @@
 import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
-import { buscarPorTitulo, type Anime } from "../anime/catalogo.ts";
+import { ADULTOS, buscarPorTitulo, type Anime } from "../anime/catalogo.ts";
 import { sugerencias } from "../anime/buscar.ts";
 import {
   esCalificacion,
@@ -132,12 +132,34 @@ export const HERRAMIENTAS: Anthropic.Tool[] = [
 
 export type Verificado = { anime: Anime; razon: string };
 
+/** Lo que ya está en la lista de la persona: {id del anime → entrada}. */
+export type Marcas = Record<number, Entrada>;
+
+/**
+ * Por qué una marca cierra la puerta a recomendar ese anime otra vez. Lo lee
+ * la AI, no la persona: tiene que explicarle qué hacer en vez de insistir.
+ */
+const YA_EN_LISTA: Record<Marca, string | null> = {
+  visto: "ya la VIO (está marcada como vista)",
+  viendo: "la está VIENDO ahora mismo",
+  abandonada: "la empezó y la DEJÓ",
+  descartado: "ya la RECHAZÓ cuando se la ofrecimos",
+  quiero_ver: null, // apuntada para después: se puede mostrar, con aviso
+};
+
 /**
  * Ejecuta buscar_anime. Devolver "no existe" NO es un fallo: es el candado
  * del riesgo técnico #1 funcionando.
+ *
+ * `marcas` es el segundo candado: lo que la persona ya vio, dejó o rechazó
+ * no vuelve a la vitrina aunque la AI lo pida. Pedírselo en el perfil ("no
+ * le repitas nada de esta lista") es una instrucción, no un candado: en
+ * producción de Binge Senpai, 38 de cada 100 recomendaciones a gente con 20+
+ * títulos ya estaban en su estante.
  */
 export async function verificar(
   entrada: unknown,
+  marcas: Marcas = {},
 ): Promise<{ verificado: Verificado | null; texto: string }> {
   const { titulo, razon } = (entrada ?? {}) as { titulo?: string; razon?: string };
   if (typeof titulo !== "string" || !titulo.trim()) {
@@ -154,6 +176,26 @@ export async function verificar(
     };
   }
 
+  if (anime.clasificacion === ADULTOS) {
+    return {
+      verificado: null,
+      texto:
+        `"${anime.titulo}" es contenido para adultos (hentai) y esta app no lo ` +
+        `recomienda. No se mostró nada. No lo menciones; elige otro.`,
+    };
+  }
+
+  const motivo = marcas[anime.id] ? YA_EN_LISTA[marcas[anime.id].marca] : null;
+  if (motivo) {
+    return {
+      verificado: null,
+      texto:
+        `"${anime.titulo}" NO se mostró: la persona ${motivo}. Está en su ` +
+        `perfil. Elige otro anime distinto y vuelve a llamar la herramienta; ` +
+        `no lo menciones como recomendación.`,
+    };
+  }
+
   return {
     verificado: { anime, razon: (razon ?? "").slice(0, MAX_RAZON) },
     // Los seis campos acordados, nunca el JSON crudo de Jikan (que trae 2-5 KB
@@ -165,6 +207,9 @@ export async function verificar(
       anio: anime.anio,
       estado: anime.estado,
       portada: anime.portada,
+      ...(marcas[anime.id]?.marca === "quiero_ver"
+        ? { nota: "Ya la tenía apuntada para después. Díselo: es un recordatorio, no un descubrimiento." }
+        : {}),
     }),
   };
 }

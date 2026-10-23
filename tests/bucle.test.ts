@@ -22,6 +22,7 @@ const FRIEREN: Anime = {
   portada: "https://ejemplo/frieren.jpg",
   episodios: 28,
   tipo: "tv",
+  clasificacion: null,
   donde: [{ nombre: "Crunchyroll", url: "https://ejemplo/cr/frieren" }],
 };
 

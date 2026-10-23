@@ -66,6 +66,8 @@ export async function perfilDe(dispositivoId: string): Promise<string> {
         "No sabemos por qué; no supongas que rechaza el género entero.",
     );
   }
+  // Esto es una instrucción; el candado de verdad está en buscar_anime, que
+  // rechaza lo marcado aunque la AI lo pida (y aunque no quepa en estas 40).
   partes.push("No le repitas nada de esta lista.");
   return partes.join("\n");
 }

@@ -9,7 +9,9 @@ import {
   limpiarChips,
   verGuardados as verGuardadosReal,
   verificar as verificarReal,
+  type Marcas,
 } from "./herramientas.ts";
+import { marcasDe as marcasDeReal } from "../lista.ts";
 import { consumoVacio, sumarVuelta, type Consumo } from "./gasto.ts";
 
 /**
@@ -55,6 +57,7 @@ type Opciones = {
     cliente?: Pick<Anthropic, "messages">;
     verificar?: typeof verificarReal;
     actualizarLista?: typeof actualizarListaReal;
+    marcasDe?: typeof marcasDeReal;
   };
 };
 
@@ -79,7 +82,17 @@ export async function conversar({
   const cliente = postizos?.cliente ?? new Anthropic();
   const verificar = postizos?.verificar ?? verificarReal;
   const actualizarLista = postizos?.actualizarLista ?? actualizarListaReal;
+  const marcasDe = postizos?.marcasDe ?? marcasDeReal;
   const arranque = Date.now();
+
+  // Lo que ya está en su lista, para que buscar_anime no lo repita. Se pide
+  // AHORA y se espera solo cuando haga falta: así corre en paralelo con la
+  // primera llamada al modelo y no suma ni un milisegundo a la primera
+  // portada. Si la lectura falla, se recomienda sin candado antes que no
+  // recomendar.
+  const marcasPromesa: Promise<Marcas> = dispositivoId
+    ? marcasDe(dispositivoId).catch(() => ({}))
+    : Promise.resolve({});
   const consumo = consumoVacio();
   let msPrimeraTarjeta: number | null = null;
 
@@ -198,7 +211,14 @@ export async function conversar({
           const { hecho, texto } = await actualizarLista(uso.input, dispositivoId);
           // La pantalla se entera al instante: sin esto la memoria existe
           // pero nadie la ve, y verse es la mitad del producto.
-          if (hecho) emitir({ tipo: "marca", ...hecho });
+          if (hecho) {
+            emitir({ tipo: "marca", ...hecho });
+            // El candado de buscar_anime ve la marca nueva en la misma
+            // conversación ("acabé Frieren, ¿qué sigue?" no puede devolver Frieren).
+            const marcas = await marcasPromesa;
+            if (hecho.entrada) marcas[hecho.animeId] = hecho.entrada;
+            else delete marcas[hecho.animeId];
+          }
           return { type: "tool_result", tool_use_id: uso.id, content: texto };
         }
 
@@ -211,7 +231,7 @@ export async function conversar({
           };
         }
 
-        const { verificado, texto } = await verificar(uso.input);
+        const { verificado, texto } = await verificar(uso.input, await marcasPromesa);
 
         // El tope se cuenta AQUÍ, después de verificar, no antes.
         // Las búsquedas van en paralelo: si se contara arriba, seis llamadas

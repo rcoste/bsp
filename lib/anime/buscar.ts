@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "../db.ts";
-import { datosDeTarjeta, type Anime } from "./catalogo.ts";
+import { ADULTOS, datosDeTarjeta, type Anime } from "./catalogo.ts";
 import { normalizar } from "./titulos.ts";
 
 /**
@@ -81,6 +81,7 @@ export async function sugerencias(consulta: string): Promise<Sugerencia[]> {
       join catalogo_cache c on c.anime_id = t.anime_id
      where t.titulo_normalizado like ${"%" + clave + "%"}
        and c.expira_en > now()
+       and coalesce(c.datos->>'clasificacion', '') <> ${ADULTOS}
      group by t.anime_id, c.datos
      order by max(t.miembros) desc
      limit ${CANDIDATOS}

@@ -71,6 +71,7 @@ for (;;) {
   const filas = await origen`
     select a.id, a.year, a.season, a.status, a.airing, a.episodes_count,
            a.score, a.members_count, a.media_type, a.synopsis,
+           a.rating, a.series_id,
       (select er.identifier_value from external_resources er
         where er.resource_type = 'Anime' and er.resource_id = a.id
           and er.identifier = 'mal_id' limit 1) as mal_id,
@@ -142,7 +143,15 @@ for (;;) {
         nombre: d.nombre,
         url: new URL(d.url).pathname.replace(/\/$/, '') ? d.url : null,
       })),
+      // Clasificación de edad (g, pg, pg_13, r, r_plus, r_x). La base trae
+      // ~1,600 títulos r_x (hentai) que sin esto saldrían en la parrilla y en
+      // las recomendaciones. null se trata como apto, igual que hace Pablo.
+      clasificacion: f.rating ?? null,
       // Extras que no van al navegador: datosDeTarjeta() los recorta.
+      // La serie agrupa temporadas, películas y OVAs de una misma obra; es
+      // la llave interna de la base de Pablo, opaca para nosotros, y sirve
+      // para no enseñar tres temporadas de lo mismo en la parrilla.
+      serie: f.series_id ? Number(f.series_id) : null,
       generos: f.generos ?? [],
       tipo: f.media_type ?? null,
       score: f.score ?? null,
