@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { Check } from "lucide-react";
 import type { Anime } from "@/lib/anime/catalogo";
@@ -157,6 +158,11 @@ export function VitrinaSeleccion({ animes, marcados, onMarcar, onSaltar }: Props
         ) : (
           <>Llevas {marcados.size} — con esto ya te leo clarito.</>
         )}
+      </p>
+      <p className="mt-6 text-[11px]" style={{ color: "var(--c-muted)" }}>
+        <Link href="/privacidad" className="underline">
+          Aviso de privacidad
+        </Link>
       </p>
     </div>
   );
