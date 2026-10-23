@@ -129,8 +129,8 @@ function aAnime(j: JikanAnime): Anime {
  * porque Vercel corre varias copias de la app a la vez y una fila en memoria
  * daría un freno por copia — o sea, ningún freno.
  */
-async function esperarTurno(): Promise<boolean> {
-  const limite = Date.now() + ESPERA_MAX_FICHA_MS;
+async function esperarTurno(maxMs = ESPERA_MAX_FICHA_MS): Promise<boolean> {
+  const limite = Date.now() + maxMs;
   while (Date.now() < limite) {
     const [{ ok }] = await sql<[{ ok: boolean }]>`select tomar_ficha_jikan() as ok`;
     if (ok) return true;
@@ -139,15 +139,27 @@ async function esperarTurno(): Promise<boolean> {
   return false; // se acabó la paciencia: mejor una recomendación menos que una espera eterna
 }
 
+/**
+ * Cuánto se le espera a Jikan. `paciente` es para refrescar por id (vale la
+ * pena insistir); `rapido` es para la búsqueda por título DENTRO de un turno
+ * del chat: ahí cada segundo retrasa la respuesta a la persona, y con 25 mil
+ * títulos en casa, lo que no está es casi siempre un título inventado. Con
+ * Jikan caído, la versión paciente tardaba ~16 s en rendirse — y se notó: los
+ * turnos con una búsqueda fallida tardaban 20 s en terminar.
+ */
+type Paciencia = { esperas: number[]; timeoutMs: number; esperaFichaMs: number };
+const PACIENTE: Paciencia = { esperas: [1000, 3000, 9000], timeoutMs: 8000, esperaFichaMs: ESPERA_MAX_FICHA_MS };
+const RAPIDO: Paciencia = { esperas: [], timeoutMs: 3000, esperaFichaMs: 1000 };
+
 /** Llama a Jikan con reintentos. Degrada, nunca tumba la app. */
-async function pedirAJikan(ruta: string): Promise<unknown | null> {
-  const esperas = [1000, 3000, 9000];
+async function pedirAJikan(ruta: string, paciencia = PACIENTE): Promise<unknown | null> {
+  const { esperas, timeoutMs, esperaFichaMs } = paciencia;
   for (let intento = 0; intento <= esperas.length; intento++) {
-    if (!(await esperarTurno())) return null;
+    if (!(await esperarTurno(esperaFichaMs))) return null;
     try {
       const r = await fetch(`${JIKAN}${ruta}`, {
         headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(8000),
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (r.ok) return await r.json();
       // 429 = nos frenaron; 5xx = Jikan o MyAnimeList con problemas.
@@ -284,9 +296,10 @@ export async function buscarPorTitulo(titulo: string): Promise<Anime | null> {
     }
   }
 
-  // 3. A internet.
+  // 3. A internet — con poca paciencia (ver RAPIDO).
   const json = (await pedirAJikan(
     `/anime?q=${encodeURIComponent(titulo)}&limit=8&sfw=true`,
+    RAPIDO,
   )) as { data?: JikanAnime[] } | null;
 
   // "No pude buscar" NO es lo mismo que "no existe". Si la fuente estaba

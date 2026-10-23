@@ -762,7 +762,7 @@ Un dispositivo sin marcas se trata como primera visita **sin mencionar que hubo 
 
 **Dos cosas que mordieron durante la construcción — no las reintroduzcas:**
 - **No metas efectos secundarios dentro de un updater de `useState`.** React los ejecuta dos veces en desarrollo y el estado se corrompe en silencio (perdimos el marcado de portadas y duplicamos un mensaje por esto).
-- **El buscador de Jikan se cae.** Devolvió 504 en 10 de 10 consultas durante la construcción, dos veces en dos días. El endpoint por id sí funciona. Por eso hay catálogo semilla y búsqueda local antes de salir a internet. **Nunca caches un resultado vacío cuando la fuente falló** — confunde "no pude buscar" con "no existe" durante 24 horas.
+- **El buscador de Jikan se cae.** Devolvió 504 en 10 de 10 consultas durante la construcción, dos veces en dos días. El endpoint por id sí funciona. Por eso hay catálogo semilla y búsqueda local antes de salir a internet. **Nunca caches un resultado vacío cuando la fuente falló** — confunde "no pude buscar" con "no existe" durante 24 horas. **Y dentro de un turno del chat, la salida a internet tiene poca paciencia** (`RAPIDO` en `catalogo.ts`: un intento, 3 s): con los reintentos completos, un título inventado dejaba las tarjetas en pantalla 16 s sin texto (medido el 2026-10-23: turnos de 21 s que pasaron a 6 s).
 
 ## Alcance v1 re-pensado (2026-08-28) — LEE `docs/designs/alcance-v1-para-diseno.md`
 
