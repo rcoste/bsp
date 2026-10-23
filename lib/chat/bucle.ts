@@ -25,7 +25,9 @@ import { consumoVacio, sumarVuelta, type Consumo } from "./gasto.ts";
  * ya salió. Ver docs/plans/arquitectura.md §2.
  */
 
-const MODELO = "claude-sonnet-5";
+const MODELO = "claude-sonnet-5-5";
+/** Se puede forzar por entorno para medir niveles sin tocar código. */
+const ESFUERZO = (process.env.BSP_ESFUERZO ?? "medium") as "low" | "medium" | "high";
 const MAX_VUELTAS = 3;
 
 export type { Evento, Turno };
@@ -129,12 +131,13 @@ export async function conversar({
       {
         model: MODELO,
         max_tokens: 8000,
-        // Se deja el pensamiento activo con esfuerzo medio: apagarlo reduce la
-        // latencia, pero la documentación advierte que sin pensamiento el
-        // modelo usa MENOS herramientas — y toda la defensa contra animes
-        // inventados depende de que llame a la herramienta.
+        // Pensamiento adaptativo con esfuerzo explícito. En Sonnet 5.5 no se
+        // puede apagar del todo, y tampoco conviene: sin pensamiento el modelo
+        // usa MENOS herramientas, y toda la defensa contra animes inventados
+        // depende de que llame a la herramienta. El nivel se eligió midiendo
+        // el tiempo hasta la primera portada (ver CLAUDE.md, "Modelo y costo").
         thinking: { type: "adaptive", display: "summarized" },
-        output_config: { effort: "medium" },
+        output_config: { effort: ESFUERZO },
         system: [
           {
             type: "text",

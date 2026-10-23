@@ -20,21 +20,33 @@ type Tarifa = {
 };
 
 /**
- * ⚠️ Sonnet 5 está en tarifa INTRODUCTORIA ($2/$10) hasta el 2026-08-31.
- * Desde el 2026-09-01 sube a $3/$15 — un 50% más por conversación. La fecha
- * se comprueba en cada cálculo para que el reporte no siga cobrando de menos
- * después del corte.
+ * Sonnet 5 salió con tarifa "introductoria" de $2/$10 que iba a subir a $3/$15
+ * el 2026-09-01. La subida SE CANCELÓ (página de precios de Anthropic,
+ * 2026-10-23): $2/$10 quedó como precio normal. Este archivo cobró de más un
+ * 50% entre septiembre y octubre; las filas de gasto_ia de ese periodo se
+ * recalcularon al corregirlo.
+ *
+ * El orden de los `startsWith` importa: "claude-sonnet-5-5" también empieza
+ * con "claude-sonnet-5".
  */
-const FIN_INTRO = Date.parse("2026-09-01T00:00:00Z");
-
-function tarifaDe(modelo: string, cuando: number): Tarifa {
+function tarifaDe(modelo: string): Tarifa {
+  if (modelo.startsWith("claude-sonnet-5-5")) {
+    // Misma tarifa que Sonnet 5, pero la lectura de caché cuesta la mitad
+    // (0.05x en vez de 0.1x) — y el caché sirve ~85% de nuestra entrada.
+    return { entrada: 2, salida: 10, cacheEscrito: 2.5, cacheLeido: 0.1 };
+  }
   if (modelo.startsWith("claude-sonnet-5")) {
-    return cuando < FIN_INTRO
-      ? { entrada: 2, salida: 10, cacheEscrito: 2.5, cacheLeido: 0.2 }
-      : { entrada: 3, salida: 15, cacheEscrito: 3.75, cacheLeido: 0.3 };
+    return { entrada: 2, salida: 10, cacheEscrito: 2.5, cacheLeido: 0.2 };
+  }
+  if (modelo.startsWith("claude-opus-5-5")) {
+    return { entrada: 4, salida: 20, cacheEscrito: 5, cacheLeido: 0.2 };
   }
   if (modelo.startsWith("claude-opus-5")) {
     return { entrada: 5, salida: 25, cacheEscrito: 6.25, cacheLeido: 0.5 };
+  }
+  if (modelo.startsWith("claude-haiku-5-5")) {
+    // Tarifa para entradas de hasta 100 mil tokens; las nuestras son de ~5 mil.
+    return { entrada: 0.1, salida: 0.5, cacheEscrito: 0.125, cacheLeido: 0.01 };
   }
   if (modelo.startsWith("claude-haiku-4-5")) {
     return { entrada: 1, salida: 5, cacheEscrito: 1.25, cacheLeido: 0.1 };
@@ -74,8 +86,8 @@ export function sumarVuelta(c: Consumo, uso: Anthropic.Usage | undefined): void 
   c.cacheLeido += uso.cache_read_input_tokens ?? 0;
 }
 
-export function costoDe(c: Consumo, modelo: string, cuando = Date.now()): number {
-  const t = tarifaDe(modelo, cuando);
+export function costoDe(c: Consumo, modelo: string): number {
+  const t = tarifaDe(modelo);
   return (
     (c.entrada * t.entrada +
       c.salida * t.salida +

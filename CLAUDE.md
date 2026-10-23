@@ -747,11 +747,12 @@ Un dispositivo sin marcas se trata como primera visita **sin mencionar que hubo 
 
 **Candado de gasto (ya no falta):** el espacio de trabajo `BSP` en Anthropic tiene tope de **20 USD/mes**. La llave es de espacio de trabajo: no puede tocar la API de administración.
 
-**Modelo y costo — MEDIDO, no estimado.** El chat usa `claude-sonnet-5` con pensamiento adaptativo en esfuerzo medio y streaming (`lib/chat/bucle.ts`). Cada conversación se registra sola en la tabla `gasto_ia`; el reporte es `node scripts/reporte-gasto.mjs`.
+**Modelo y costo — MEDIDO, no estimado.** El chat usa `claude-sonnet-5-5` con pensamiento adaptativo en esfuerzo medio y streaming (`lib/chat/bucle.ts`; `BSP_ESFUERZO=low|medium|high` lo cambia por entorno para medir). Cada conversación se registra sola en la tabla `gasto_ia`; el reporte es `node scripts/reporte-gasto.mjs`. **La medición se repite con `scripts/medir-chat.ts`** (10 conversaciones reales, ~$0.10; ver su cabecera) cada vez que cambie el modelo, el esfuerzo o las instrucciones.
 
-- **$0.0095 por conversación** (medido sobre 10 turnos reales) → ~2,100 conversaciones con 20 USD.
+- **Migración a Sonnet 5.5 (2026-10-23), medida:** mediana hasta la primera portada **3.4 s** (mín 3.1 · máx 7.3 con caché frío) contra 5.06 s de Sonnet 5 y un umbral de 8 s; 10/10 con portadas, 0 errores, 2.7 tarjetas por turno. Esfuerzo `low` dio lo mismo (3.4 s) y no cambió el costo, así que se quedó `medium`, que es lo validado. Mover la marca de caché entre vueltas NO rompe el candado de "pensamiento preservado" (la documentación lo lista como edición permitida), y la medición no dio ningún 400.
+- **$0.0095 por conversación** → ~2,100 conversaciones con 20 USD. Sonnet 5.5 cuesta lo mismo de lista que Sonnet 5 pero lee el caché a la mitad.
 - **El caché sirve el 85% de los tokens de entrada**, y por eso cuesta la mitad de lo que daba la estimación a mano. Si ese porcentaje se desploma, algo está invalidando el caché — revisar `marcarPuntoDeCache` y que el perfil siga viajando DESPUÉS del punto de caché, no dentro de las instrucciones.
-- **⚠️ La tarifa de Sonnet 5 es introductoria hasta el 2026-08-31.** Desde el 2026-09-01 sube de $2/$10 a $3/$15 por millón de tokens: la conversación pasa a ~$0.014 y el tope alcanza para ~1,400. `lib/chat/gasto.ts` ya cambia de tarifa solo en esa fecha, así que el reporte no se queda cobrando de menos.
+- **La subida de precio de Sonnet 5 del 2026-09-01 SE CANCELÓ** (página de precios de Anthropic): $2/$10 quedó como tarifa normal. `lib/chat/gasto.ts` cobró un 50% de más entre septiembre y octubre; se corrigió el 2026-10-23 y se recalcularon las 20 filas afectadas de `gasto_ia`.
 - La telemetría **nunca puede tumbar una conversación**: `sumarVuelta` tolera respuestas sin bloque de uso y `registrarGasto` se traga sus propios errores. Perder un dato de gasto es molesto; dejar a alguien sin respuesta por contar tokens, absurdo.
 
 **Tres cosas del autocompletado que no hay que reintroducir:**
