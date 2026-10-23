@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     // Abrir la app NO cuenta como día de uso: en Binge Senpai tampoco, y el
     // regreso de las dos apuestas tiene que medirse igual (ver lib/perfil.ts,
     // anotarActividad).
-    await sql`
+    const [perfil] = await sql<{ id: string }[]>`
       insert into perfiles (dispositivo_id, origen, consulta_llegada, gclid, gbraid, wbraid, clic_en)
       values (
         ${dispositivoId}, ${origen}, ${consulta || null},
@@ -56,8 +56,11 @@ export async function POST(request: Request) {
         gbraid = case when perfiles.clic_en is null then excluded.gbraid else perfiles.gbraid end,
         wbraid = case when perfiles.clic_en is null then excluded.wbraid else perfiles.wbraid end,
         clic_en = coalesce(perfiles.clic_en, excluded.clic_en)
+      returning id
     `;
-    const respuesta = Response.json({ ok: true });
+    // El id del perfil (no el del dispositivo) es lo que liga la grabación de
+    // Clarity con la base; ver lib/clarity.ts.
+    const respuesta = Response.json({ ok: true, perfil: perfil?.id ?? null });
     if (cookie) respuesta.headers.set("Set-Cookie", cookie);
     return respuesta;
   } catch (error) {

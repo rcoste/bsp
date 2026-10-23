@@ -24,6 +24,8 @@ export function Globo({ turno, conEtiqueta = true }: { turno: Turno; conEtiqueta
       )}
 
       <div
+        // Lo que escribe la persona no sale en las grabaciones de Clarity.
+        data-clarity-mask={esBot ? undefined : "True"}
         className="relative max-w-[85%] px-[14px] py-[10px] text-[14px] leading-normal"
         style={{
           background: esBot ? "var(--c-surface)" : "var(--c-accent)",

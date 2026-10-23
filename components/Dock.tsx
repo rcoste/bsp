@@ -229,6 +229,7 @@ export function Dock({
         </label>
         <textarea
           id="mensaje"
+          data-clarity-mask="True"
           value={texto}
           rows={1}
           disabled={deshabilitado}

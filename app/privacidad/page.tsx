@@ -49,7 +49,10 @@ export default function Privacidad() {
       <Seccion titulo="Qué datos guardamos">
         <p>bsp no te pide nombre, correo ni teléfono. Para funcionar guarda:</p>
         <ul className="list-disc pl-5">
-          <li>Un identificador de tu dispositivo, en una cookie que dura un año.</li>
+          <li>
+            Un identificador de tu dispositivo, en una cookie que dura un año. Clarity pone además
+            sus propias cookies para unir las visitas de una misma grabación.
+          </li>
           <li>Los animes que marcas, cómo los calificas y en qué episodio vas.</li>
           <li>Los mensajes que le escribes a Sen Pai en el chat.</li>
           <li>Los días en que usas la app.</li>
@@ -58,13 +61,17 @@ export default function Privacidad() {
             el identificador de ese clic.
           </li>
           <li>Tu dirección IP, solo para limitar el uso abusivo.</li>
+          <li>
+            Cómo usas la pantalla (toques, desplazamientos, qué abres), grabado con Microsoft
+            Clarity. Lo que escribes en el chat se tapa y no aparece en esas grabaciones.
+          </li>
         </ul>
       </Seccion>
 
       <Seccion titulo="Para qué los usamos">
         <p>
           <b>Para darte el servicio:</b> recomendarte qué ver, recordar tu lista entre visitas y
-          mantener la app funcionando y segura.
+          mantener la app funcionando y segura, y entender dónde se atora la gente para mejorarla.
         </p>
         <p>
           <b>Para medir nuestra publicidad (finalidad secundaria):</b> si llegaste por un anuncio de
@@ -82,6 +89,7 @@ export default function Privacidad() {
           <li>Supabase, donde vive la base de datos.</li>
           <li>Vercel, donde está alojada la app.</li>
           <li>Google, para la medición de anuncios descrita arriba.</li>
+          <li>Microsoft, que guarda las grabaciones de uso de Clarity.</li>
         </ul>
         <p>No vendemos tus datos.</p>
       </Seccion>

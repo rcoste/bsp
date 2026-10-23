@@ -9,6 +9,10 @@ import { Obertura } from "./Obertura";
 import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
 import { Dock } from "./Dock";
+import { etiquetarEnClarity, identificarEnClarity } from "@/lib/clarity";
+
+/** Lo mismo que cuenta la conversión "20 animes" (lib/medicion.ts). */
+const META_VEINTE = 20;
 
 const CHIPS_INICIALES = [
   "Acabé una serie",
@@ -440,9 +444,20 @@ export function Pantalla({
         gbraid: llegada.gbraid,
         wbraid: llegada.wbraid,
       }),
-    }).catch(() => {
-      // Telemetría: que falle no le estorba a quien vino a usar la app.
-    });
+    })
+      .then((r) => r.json() as Promise<{ perfil?: string | null }>)
+      .then(({ perfil }) => {
+        // Para cruzar la grabación de Clarity con la base, y filtrar por
+        // campaña igual que en Binge Senpai.
+        if (perfil) identificarEnClarity(perfil);
+        etiquetarEnClarity("campana", llegada.campana ?? "sin campaña");
+        if (llegada.gclid || llegada.gbraid || llegada.wbraid) {
+          etiquetarEnClarity("anuncio_google", "si");
+        }
+      })
+      .catch(() => {
+        // Telemetría: que falle no le estorba a quien vino a usar la app.
+      });
 
     // La búsqueda con la que llegó ES su primer mensaje. Quien buscó
     // "parecido a Death Note" y aterriza en una parrilla genérica vio cómo
@@ -498,6 +513,15 @@ export function Pantalla({
   const totalMarcados = Object.values(marcas).filter(
     (e) => e.marca !== "descartado",
   ).length;
+
+  // En Clarity se marca la grabación en la que la persona cruza los 20
+  // títulos: es la conversión de "20 animes" y la que más importa ver.
+  const llegoA20 = useRef(totalMarcados >= META_VEINTE);
+  useEffect(() => {
+    if (llegoA20.current || totalMarcados < META_VEINTE) return;
+    llegoA20.current = true;
+    etiquetarEnClarity("llego_a_20", "si");
+  }, [totalMarcados]);
 
   // Lo que cuenta el chip: lo que está en la lista, no todo lo marcado.
   const cuantosGuardados = Object.values(marcas).filter(

@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Archivo } from "next/font/google";
+import Script from "next/script";
+import { fragmentoClarity, idClarity } from "@/lib/clarity";
 import "./globals.css";
+
+const clarity = idClarity();
 
 // Una sola familia en todo el sistema: Archivo. Headings 800, body 400/600.
 // Las dos variables apuntan a la misma fuente a propósito — así los
@@ -47,7 +51,15 @@ export default function RootLayout({
         } as React.CSSProperties
       }
     >
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Grabaciones de Clarity, solo si el proyecto existe (lib/clarity.ts). */}
+        {clarity && (
+          <Script id="clarity" strategy="afterInteractive">
+            {fragmentoClarity(clarity)}
+          </Script>
+        )}
+      </body>
     </html>
   );
 }
