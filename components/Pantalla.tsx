@@ -9,6 +9,7 @@ import { Obertura } from "./Obertura";
 import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
 import { Dock } from "./Dock";
+import { HojaDetalle } from "./HojaDetalle";
 import type { NombreEvento } from "@/lib/eventos-uso";
 import type { ViaMensaje } from "@/lib/chat/eventos";
 import { etiquetarEnClarity, identificarEnClarity } from "@/lib/clarity";
@@ -103,6 +104,8 @@ export function Pantalla({
   const [aviso, setAviso] = useState<string | null>(null);
   const [mudo, setMudo] = useState(false);
   const [demo, setDemo] = useState(false);
+  // La hoja de detalle abierta encima de todo (null = cerrada).
+  const [detalle, setDetalle] = useState<Anime | null>(null);
   // --- Los estados feos (docs/designs/experiencia-y-estados.md §3.3–3.9) ---
   // Red lenta: la burbuja de espera cambia a los 12 s sin señal y ofrece
   // Esperar / Cancelar; a los 30 s se corta sola salvo que hayan tocado Esperar.
@@ -738,6 +741,7 @@ export function Pantalla({
       saliendo={saliendo}
       onMarcar={marcarAnime}
       onCalificar={calificarAnime}
+      onAbrir={setDetalle}
       medidor={{
         marcados: totalMarcados,
         meta: META_ARRANQUE,
@@ -788,6 +792,15 @@ export function Pantalla({
     >
       {conexion === "sin" ? "Sin conexión. Lo que ya viste sigue aquí." : "Volvió la conexión."}
     </p>
+  );
+
+  const hojaDetalle = detalle && (
+    <HojaDetalle
+      anime={detalle}
+      escritorio={escritorio}
+      onCerrar={() => setDetalle(null)}
+      onAbrir={setDetalle}
+    />
   );
 
   const avisoDeshacer = deshacer && (
@@ -858,7 +871,9 @@ export function Pantalla({
         style={{ background: "var(--c-paper)" }}
       >
         {conObertura && <Obertura />}
-        {avisoRed}
+        {hojaDetalle}
+        {hojaDetalle}
+      {avisoRed}
         {avisoRed}
       {avisoDeshacer}
         {chat}

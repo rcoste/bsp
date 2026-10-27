@@ -27,6 +27,8 @@ export const NOMBRES_EVENTO = [
   "guardados",
   /** Volvió a la parrilla a seguir marcando. */
   "volver_parrilla",
+  /** Abrió la hoja de detalle de un anime. datos.animeId */
+  "detalle",
 ] as const;
 
 export type NombreEvento = (typeof NOMBRES_EVENTO)[number];

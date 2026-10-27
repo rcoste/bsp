@@ -720,6 +720,13 @@ La app se afina con un ciclo **probar → medir → comparar → cambiar**, al e
 - **Reporte**: `node scripts/reporte-puertas.mjs [días]`. Por puerta, por campaña × puerta y por semana: visitas → marcó → 20 animes → habló → **regresó a 7 días** (solo "maduros") → costo de AI. Enseña a propósito las dos columnas que se pueden contradecir (completar vs. regresar). Compara las dos puertas más grandes con una prueba z y **dice "todavía no concluyas" con menos de 100 visitas por lado**.
 - **Regla de la casa:** una comparación a la vez en la cima del embudo. Dos a la vez se contaminan.
 
+## La hoja de detalle existe (2026-10-26)
+
+Módulo 4 del alcance v1, tal cual: se abre ENCIMA (hoja al 85% en celular, panel a la derecha en escritorio) tocando la portada de una tarjeta, y trae solo **sinopsis sin spoilers en español, dónde verlo y la misma obra**. Nada de personajes, reseñas ni episodios. Marcar sigue en la tarjeta.
+- `lib/anime/detalle.ts`: la sinopsis se **redacta la primera vez** que alguien abre la hoja (Sonnet 5.5, esfuerzo bajo, ~$0.002 una sola vez por título) y se guarda en `catalogo_cache.sinopsis_es`; el "no dio para nada" también se guarda (cadena vacía) para no volver a pagar. Candado: 60 redacciones nuevas por dispositivo al día (`incrementar_uso` tipo `detalle`).
+- Relacionados = misma `serie` del catálogo de Pablo, por año, sin r_x. "Dónde verlo": **"Ver en X"** si hay link directo a la serie, **"Buscar en X"** si solo hay plataforma (nunca prometer disponibilidad).
+- `GET /api/detalle?id=` no cobra mensaje ni pasa por el tope de 20; anota el evento `detalle`. Pruebas: `tests/detalle.test.ts` con filas desechables.
+
 ## Los estados feos ya existen (2026-10-26)
 
 Implementados según `docs/designs/experiencia-y-estados.md` §3.3–3.9, en `components/Pantalla.tsx` (`hablar`) y `Dock.tsx`/`Globo.tsx`:
