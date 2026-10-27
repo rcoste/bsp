@@ -907,10 +907,8 @@ export function Pantalla({
       >
         {conObertura && <Obertura />}
         {hojaDetalle}
-        {hojaDetalle}
-      {avisoRed}
         {avisoRed}
-      {avisoDeshacer}
+        {avisoDeshacer}
         {chat}
         <div className="flex min-w-0 flex-1 flex-col">
           <header
@@ -944,6 +942,8 @@ export function Pantalla({
       }}
     >
       {conObertura && <Obertura />}
+      {hojaDetalle}
+      {avisoRed}
       {avisoDeshacer}
       <header
         className="flex shrink-0 items-center gap-[10px] px-4"
