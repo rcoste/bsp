@@ -61,6 +61,28 @@ export const ADULTOS: Clasificacion = "r_x";
 export const FUERA_DE_PRIMERA_PANTALLA: readonly Clasificacion[] = ["r_x", "r_plus"];
 
 /**
+ * Obras (el `serie` del catálogo de Pablo) que MyAnimeList clasifica PG-13
+ * porque la versión de TV salió censurada, pero cuya premisa o portada ES el
+ * fanservice. Tampoco van en la primera pantalla; en el chat sí pueden salir
+ * si alguien las pide.
+ *
+ * Lista a mano a propósito (decisión de Roberto, 2026-10-27): filtrar todo el
+ * género "Ecchi" sacaba 29 de los 400 títulos de la parrilla, incluidos Kill
+ * la Kill, Mushoku Tensei o No Game No Life, que sí ayudan a leer el gusto.
+ * Se revisó contra los 33 ecchi que caben en la parrilla; si aparece otro así,
+ * se agrega aquí.
+ */
+export const OBRAS_FUERA_DE_PRIMERA_PANTALLA: readonly string[] = [
+  "3926", // Kiss x Sis
+  "11098", // Keijo!!!!!!!!
+  "12014", // Hajimete no Gal
+  "11237", // Eromanga-sensei
+  "13711", // Isekai Maou to Shoukan Shoujo no Dorei Majutsu
+  "16422", // Ore dake Haireru Kakushi Dungeon
+  "4383", // Sora no Otoshimono
+];
+
+/**
  * Jikan entrega la clasificación como frase ("Rx - Hentai", "R+ - Mild
  * Nudity", "PG-13 - Teens 13 or older"); el catálogo exportado de Pablo la
  * trae ya en código. Aquí se reduce la frase al mismo código para que una

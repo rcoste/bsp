@@ -2,6 +2,7 @@ import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { sql } from "../lib/db.ts";
+import { paraArranque } from "../lib/anime/destacados.ts";
 import { decidirInicio, esPuerta } from "../lib/inicio.ts";
 import { marcar } from "../lib/lista.ts";
 import { recordarRecomendaciones } from "../lib/perfil.ts";
@@ -126,6 +127,17 @@ describe("la primera pantalla no apuesta la primera impresión", () => {
       const animes = i.modo === "reposo" ? [...i.tarjetas.map((t) => t.anime), ...i.animes] : i.animes;
       for (const a of animes) {
         assert.ok(a.clasificacion !== "r_x" && a.clasificacion !== "r_plus", `${a.titulo} (${a.clasificacion}) en ${puerta}`);
+      }
+    }
+  });
+
+  it("tampoco las obras PG-13 cuyo gancho es el fanservice (Kiss x Sis, Keijo…)", async () => {
+    // Se pide la parrilla muchas veces: sale al azar de 400 y un título
+    // vetado tendría que asomarse en alguna.
+    const vetados = new Set([7593, 32686, 34403, 32901, 37210, 41899, 5958]);
+    for (let i = 0; i < 20; i++) {
+      for (const a of await paraArranque(24)) {
+        assert.ok(!vetados.has(a.id), `${a.titulo} salió en la parrilla`);
       }
     }
   });
