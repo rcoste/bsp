@@ -162,6 +162,9 @@ export function Pantalla({
   // vez — dos burbujas, el texto partido entre ellas y el doble de gasto.
   const hilo = useRef<Turno[]>([]);
   hilo.current = mensajes;
+  // Si la vitrina tiene un set, para que el encabezado no se le adelante.
+  const hayTarjetas = useRef(false);
+  hayTarjetas.current = tarjetas.length > 0;
 
   // El teclado del celular no cambia el alto de la ventana en iOS, así que
   // 100vh miente. visualViewport sí dice el alto REAL disponible: sin esto,
@@ -260,8 +263,15 @@ export function Pantalla({
       // recomiendas?") no sirve de encabezado: salía entero, en mayúsculas,
       // a dos renglones. Lo que la persona pidió de verdad, sí.
       const anclaCorta = via === "arranque" ? "Por lo que marcaste" : texto;
-      setAncla(anclaCorta);
-      setAnclaLibre(via === "arranque");
+      // El encabezado cambia JUNTO con las tarjetas, no antes: si la vitrina
+      // tiene un set, ese set conserva su encabezado hasta que llega la
+      // primera tarjeta nueva. Antes el encabezado nuevo quedaba ~3 s encima
+      // de las tarjetas viejas, y la pantalla decía algo que no era cierto.
+      const ponerAncla = () => {
+        setAncla(anclaCorta);
+        setAnclaLibre(via === "arranque");
+      };
+      if (!hayTarjetas.current) ponerAncla();
       setAviso(null);
       // Un turno nuevo devuelve la vitrina al modo recomendación.
       setMarcandoMas(false);
@@ -350,13 +360,16 @@ export function Pantalla({
         for await (const evento of leerEventos(respuesta.body)) {
           if (evento.tipo === "tarjeta") {
             senal();
+            if (primeraTarjeta) ponerAncla();
             // Las viejas solo se van cuando llega la primera nueva: vaciar la
             // vitrina antes castigaría al usuario si esta vuelta no trae nada.
-            setTarjetas((previas) =>
-              primeraTarjeta
-                ? [{ anime: evento.anime, razon: evento.razon }]
-                : [...previas, { anime: evento.anime, razon: evento.razon }],
-            );
+            // OJO: "¿es la primera?" se copia ANTES de llamar a setTarjetas.
+            // React puede correr el updater después de que la línea de abajo
+            // ya puso primeraTarjeta en false, y entonces SUMABA las nuevas a
+            // las viejas (pasó: 3 + 3 = 6 tarjetas en pantalla).
+            const reemplazar = primeraTarjeta;
+            const nueva = { anime: evento.anime, razon: evento.razon };
+            setTarjetas((previas) => (reemplazar ? [nueva] : [...previas, nueva]));
             primeraTarjeta = false;
             setDelTurno.push({ anime: evento.anime, razon: evento.razon });
           } else if (evento.tipo === "texto") {

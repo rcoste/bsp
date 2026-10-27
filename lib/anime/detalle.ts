@@ -118,6 +118,9 @@ export async function detalleDe(
              and anime_id <> ${id}
              and expira_en > now()
              and coalesce(datos->>'clasificacion', '') <> ${ADULTOS}
+             -- Los resúmenes ("Nana Recaps", 総集編) son relleno: nadie
+             -- quiere que se los recomienden como "de la misma obra".
+             and datos->>'titulo' !~* '(recap|総集編|digest)'
            order by (datos->>'anio')::int nulls last, (datos->>'miembros')::bigint desc
            limit 8
         `

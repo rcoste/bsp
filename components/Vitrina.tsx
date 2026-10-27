@@ -134,11 +134,14 @@ export function VitrinaSeleccion({ animes, marcados, onMarcar, onSaltar }: Props
                     </>
                   )}
                 </div>
+                {/* El corte va en un span SIN padding: con el padding en el
+                    mismo elemento, el recorte de line-clamp dejaba asomar
+                    medio tercer renglón ("Shijou Shugi no" a la mitad). */}
                 <p
-                  className="font-display line-clamp-2 p-2 text-[11px] leading-tight"
+                  className="font-display p-2 text-[11px] leading-tight"
                   style={{ color: activo ? "var(--c-accent-700)" : "var(--c-ink)" }}
                 >
-                  {a.titulo}
+                  <span className="line-clamp-2">{a.titulo}</span>
                 </p>
               </button>
             </li>

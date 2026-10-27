@@ -15,6 +15,7 @@ const OBRA = -990_001; // la "serie" de mentira
 const A = -9001;
 const B = -9002;
 const RX = -9003;
+const RECAP = -9004;
 
 const fila = (id: number, titulo: string, anio: number, extras: Record<string, unknown> = {}) => ({
   id,
@@ -39,6 +40,7 @@ before(async () => {
     [A, fila(A, "Obra de prueba", 2020, { sinopsis: "A boy finds a notebook. In the end he dies." })],
     [B, fila(B, "Obra de prueba 2", 2022, { sinopsis: "Season two." })],
     [RX, fila(RX, "Obra de prueba XXX", 2023, { clasificacion: "r_x" })],
+    [RECAP, fila(RECAP, "Obra de prueba Recaps", 2021)],
   ] as const) {
     await sql`
       insert into catalogo_cache (anime_id, datos, expira_en)
@@ -49,7 +51,7 @@ before(async () => {
 });
 
 after(async () => {
-  await sql`delete from catalogo_cache where anime_id in (${A}, ${B}, ${RX})`;
+  await sql`delete from catalogo_cache where anime_id in (${A}, ${B}, ${RX}, ${RECAP})`;
   await sql.end();
 });
 
@@ -78,7 +80,7 @@ describe("detalleDe", () => {
     assert.deepEqual(
       d?.relacionados.map((r) => r.id),
       [B],
-      "solo la temporada 2; ni la propia ni la r_x",
+      "solo la temporada 2; ni la propia, ni la r_x, ni el recap",
     );
     assert.deepEqual(d?.generos, ["Drama"]);
   });

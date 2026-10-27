@@ -223,7 +223,13 @@ export function Dock({
             "Mis guardados" va PRIMERO y siempre: es la única puerta a la
             lista, y la lista vive en la conversación, no en otra pantalla. */}
       {sugeridos.length === 0 && (
-        <div className="fila-scroll gap-2 px-4 pb-2 [&::-webkit-scrollbar]:hidden">
+        // En escritorio la columna mide ~430px y los chips se cortaban sin
+        // pista de que se podía deslizar ("Alg…"): ahí sobra alto, así que
+        // envuelven. En celular se quedan en una fila deslizable — el alto es
+        // lo escaso (experiencia-y-estados.md §6).
+        <div
+          className={`gap-2 px-4 pb-2 ${escritorio ? "flex flex-wrap" : "fila-scroll [&::-webkit-scrollbar]:hidden"}`}
+        >
           <button
             type="button"
             onClick={onGuardados}
