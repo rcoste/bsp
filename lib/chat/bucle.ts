@@ -197,7 +197,7 @@ export async function conversar({
             if (yaEnVitrina.has(t.anime.id)) continue;
             yaEnVitrina.add(t.anime.id);
             if (msPrimeraTarjeta === null) msPrimeraTarjeta = Date.now() - arranque;
-            emitir({ tipo: "tarjeta", anime: t.anime, razon: t.razon });
+            emitir({ tipo: "tarjeta", anime: t.anime, razon: t.razon, deLista: true });
           }
           return { type: "tool_result", tool_use_id: uso.id, content: texto };
         }

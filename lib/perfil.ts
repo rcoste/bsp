@@ -95,3 +95,27 @@ export async function anotarActividad(dispositivoId: string): Promise<void> {
     on conflict (perfil_id, dia) do update set ultima = now()
   `;
 }
+
+/** Una recomendación que se le dejó a alguien: el anime y su porqué. */
+export type Recomendada = { id: number; razon: string };
+
+/** Cuántas se recuerdan: las del último set, que es lo que la vitrina enseña. */
+const MAX_RECORDADAS = 5;
+
+/**
+ * Guarda el último set que se le recomendó a esta persona. Sirve para que, al
+ * volver, la vitrina enseñe LO QUE SE LE DEJÓ y el saludo pueda preguntar
+ * "¿le entraste a alguno?" sin mentir. Antes el saludo lo preguntaba y la
+ * vitrina enseñaba populares genéricos.
+ */
+export async function recordarRecomendaciones(
+  dispositivoId: string,
+  tarjetas: Recomendada[],
+): Promise<void> {
+  if (!tarjetas.length) return;
+  const set = tarjetas.slice(0, MAX_RECORDADAS).map((t) => ({ id: t.id, razon: t.razon }));
+  await sql`
+    update perfiles set ultimas_recomendaciones = ${sql.json(set)}
+     where dispositivo_id = ${dispositivoId}
+  `;
+}

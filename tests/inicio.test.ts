@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "../lib/db.ts";
 import { decidirInicio, esPuerta } from "../lib/inicio.ts";
 import { marcar } from "../lib/lista.ts";
+import { recordarRecomendaciones } from "../lib/perfil.ts";
 
 /**
  * Qué ve la vitrina al abrir. Tres puertas distintas, y confundirlas cuesta:
@@ -15,11 +16,12 @@ import { marcar } from "../lib/lista.ts";
  */
 
 const NUEVO = `prueba-${randomUUID()}`;
+const VUELVE = `prueba-${randomUUID()}`;
 const CONOCIDO = `prueba-${randomUUID()}`;
 const DANDADAN = 57334;
 
 after(async () => {
-  await sql`delete from perfiles where dispositivo_id in (${NUEVO}, ${CONOCIDO})`;
+  await sql`delete from perfiles where dispositivo_id in (${NUEVO}, ${CONOCIDO}, ${VUELVE})`;
   await sql.end();
 });
 
@@ -126,5 +128,36 @@ describe("la primera pantalla no apuesta la primera impresión", () => {
         assert.ok(a.clasificacion !== "r_x" && a.clasificacion !== "r_plus", `${a.titulo} (${a.clasificacion}) en ${puerta}`);
       }
     }
+  });
+});
+
+describe("al volver, la vitrina enseña lo que se le dejó", () => {
+  const FRIEREN = 52991;
+  const DEATH_NOTE = 1535;
+  const MONSTER = 19;
+
+  it("sin guardados pero con recomendaciones previas: 'Te dejé esto', con su porqué", async () => {
+    await marcar(VUELVE, FRIEREN, "visto");
+    await recordarRecomendaciones(VUELVE, [
+      { id: DEATH_NOTE, razon: "Porque acabaste Frieren" },
+      { id: MONSTER, razon: "Otro duelo mental" },
+    ]);
+    const i = await decidirInicio({ dispositivoId: VUELVE, fria: false, vaAPreguntar: false });
+    assert.equal(i.modo, "reposo");
+    if (i.modo !== "reposo") return;
+    assert.equal(i.ancla, "Te dejé esto");
+    assert.deepEqual(i.tarjetas.map((t) => t.anime.id).sort(), [MONSTER, DEATH_NOTE].sort());
+    assert.ok(i.tarjetas.some((t) => t.razon === "Porque acabaste Frieren"));
+    assert.match(i.saludo, /los que te dejé/);
+  });
+
+  it("lo que ya marcó deja de ser 'lo que te dejé'; si no queda nada, no lo promete", async () => {
+    await marcar(VUELVE, DEATH_NOTE, "visto");
+    await marcar(VUELVE, MONSTER, "descartado");
+    const i = await decidirInicio({ dispositivoId: VUELVE, fria: false, vaAPreguntar: false });
+    assert.equal(i.modo, "reposo");
+    if (i.modo !== "reposo") return;
+    assert.equal(i.ancla, "Para ti");
+    assert.doesNotMatch(i.saludo, /te dejé/, "no pregunta por algo que no está en pantalla");
   });
 });

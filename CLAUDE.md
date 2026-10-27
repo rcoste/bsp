@@ -720,6 +720,12 @@ La app se afina con un ciclo **probar → medir → comparar → cambiar**, al e
 - **Reporte**: `node scripts/reporte-puertas.mjs [días]`. Por puerta, por campaña × puerta y por semana: visitas → marcó → 20 animes → habló → **regresó a 7 días** (solo "maduros") → costo de AI. Enseña a propósito las dos columnas que se pueden contradecir (completar vs. regresar). Compara las dos puertas más grandes con una prueba z y **dice "todavía no concluyas" con menos de 100 visitas por lado**.
 - **Regla de la casa:** una comparación a la vez en la cima del embudo. Dos a la vez se contaminan.
 
+## La memoria de lo recomendado (2026-10-27)
+
+Al volver, la vitrina enseña **lo que se le dejó la última vez** ("Te dejé esto", con su porqué), y el saludo solo pregunta "¿le entraste a alguno de los que te dejé?" cuando eso está en pantalla. Antes preguntaba y la vitrina enseñaba populares genéricos. `/api/chat` guarda el set de cada turno en `perfiles.ultimas_recomendaciones` (`recordarRecomendaciones`, sin las tarjetas de `ver_guardados`, que llegan con `deLista`); `lib/inicio.ts` (`loQueSeLeDejo`) quita lo que ya marcó. Orden al volver: guardados ("Seguías con esto") → lo que se le dejó → populares. Pruebas en `tests/inicio.test.ts`.
+
+El encabezado del arranque es **"Por lo que marcaste"**, no el mensaje automático entero ("Ya vi X, Y, Z. ¿Qué me recomiendas?" salía en mayúsculas a dos renglones), y el ancla se corta a un renglón.
+
 ## Volver a sets anteriores y las dos direcciones (2026-10-26)
 
 - **Tira de miniaturas en el globo** (`Dock.tsx`): cada turno de Sen Pai que trajo tarjetas guarda su set en `Turno.set` (solo en el navegador; `historialParaLaAI` lo quita antes de mandar). Tocar la tira devuelve ese set a la vitrina con su ancla. Antes cada recomendación borraba la anterior para siempre. Evento `volver_set`.

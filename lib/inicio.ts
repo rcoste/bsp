@@ -150,31 +150,60 @@ async function recordar(
   `;
   if (!ultimo) return null;
 
+  // Lo último que se le recomendó y que todavía no ha tocado (lo que ya
+  // marcó, en cualquier estado, ya no es "lo que te dejé").
+  const dejadas = await loQueSeLeDejo(perfilId);
+
   const saludo =
     ultimo.estado === "viendo"
       ? `Ibas en el episodio ${ultimo.episodio ?? "?"} de ${ultimo.titulo}. ¿Seguimos por ahí?`
       : ultimo.estado === "visto"
-        ? `La última vez acabaste ${ultimo.titulo}. ¿Le entraste a alguno de los que te dejé?`
+        ? dejadas.length && !lista.length
+          ? `La última vez acabaste ${ultimo.titulo}. ¿Le entraste a alguno de los que te dejé?`
+          : `La última vez acabaste ${ultimo.titulo}. ¿Te busco lo que sigue?`
         : ultimo.estado === "abandonada"
           ? `Dejaste ${ultimo.titulo} a medias. ¿Te busco algo que sí te agarre?`
           : `Tenías ${ultimo.titulo} apuntado. ¿Le entramos?`;
 
-  // Si su lista está vacía (solo tiene vistos), la vitrina no puede quedarse
-  // en blanco: se cae a populares, pero el saludo SÍ demuestra memoria.
-  if (!lista.length) {
-    const populares = await paraArranque(6);
+  // Lo que está en su lista manda: es lo más accionable.
+  if (lista.length) {
     return {
       modo: "reposo",
-      tarjetas: populares.map((anime) => ({ anime, razon: "" })),
-      ancla: "Para ti",
+      tarjetas: lista.map((g) => ({ anime: datosDeTarjeta(g.anime), razon: "" })),
+      ancla: "Seguías con esto",
       saludo,
     };
   }
 
+  // Si no guardó nada, lo que se le dejó la última vez, con su porqué: el
+  // saludo pregunta por eso y la vitrina lo enseña. Antes la vitrina enseñaba
+  // populares genéricos mientras Sen Pai preguntaba por "los que te dejé".
+  if (dejadas.length) {
+    return { modo: "reposo", tarjetas: dejadas, ancla: "Te dejé esto", saludo };
+  }
+
+  // Sin nada que recordar en la vitrina, populares; el saludo SÍ demuestra
+  // memoria y no promete nada que no esté en pantalla.
+  const populares = await paraArranque(6);
   return {
     modo: "reposo",
-    tarjetas: lista.map((g) => ({ anime: datosDeTarjeta(g.anime), razon: "" })),
-    ancla: "Seguías con esto",
+    tarjetas: populares.map((anime) => ({ anime, razon: "" })),
+    ancla: "Para ti",
     saludo,
   };
+}
+
+/** Las últimas recomendaciones de este perfil que todavía no ha marcado. */
+async function loQueSeLeDejo(perfilId: string): Promise<{ anime: Anime; razon: string }[]> {
+  const filas = await sql<{ datos: Anime; razon: string }[]>`
+    select c.datos, r.razon
+      from perfiles p
+      cross join lateral jsonb_to_recordset(p.ultimas_recomendaciones) as r(id int, razon text)
+      join catalogo_cache c on c.anime_id = r.id and c.expira_en > now()
+     where p.id = ${perfilId}
+       and not exists (
+         select 1 from listas l where l.perfil_id = p.id and l.anime_id = r.id
+       )
+  `;
+  return filas.map((f) => ({ anime: datosDeTarjeta(f.datos), razon: f.razon ?? "" }));
 }

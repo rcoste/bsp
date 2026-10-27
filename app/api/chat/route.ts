@@ -4,7 +4,7 @@ import { registrarEvento } from "@/lib/eventos-uso";
 import { conversarDemo, enDemo } from "@/lib/chat/demo";
 import { registrarGasto } from "@/lib/chat/gasto";
 import { registrarError } from "@/lib/db";
-import { anotarActividad, idDePerfil, perfilDe } from "@/lib/perfil";
+import { anotarActividad, idDePerfil, perfilDe, recordarRecomendaciones, type Recomendada } from "@/lib/perfil";
 import { NOMBRE_COOKIE, leerDispositivo, nuevoDispositivo } from "@/lib/sesion";
 import { TOPE_DISPOSITIVO, cobrarMensaje, direccionReal } from "@/lib/topes";
 
@@ -143,7 +143,12 @@ export async function POST(request: Request) {
   const codificador = new TextEncoder();
   const flujo = new ReadableStream({
     async start(controlador) {
+      // Las recomendaciones de este turno, para recordarlas (lib/perfil.ts).
+      const recomendadas: Recomendada[] = [];
       const emitir = (evento: Evento) => {
+        if (evento.tipo === "tarjeta" && !evento.deLista) {
+          recomendadas.push({ id: evento.anime.id, razon: evento.razon });
+        }
         controlador.enqueue(
           codificador.encode(`event: ${evento.tipo}\ndata: ${JSON.stringify(evento)}\n\n`),
         );
@@ -173,6 +178,8 @@ export async function POST(request: Request) {
             perfilId: await idDePerfil(dispositivoId).catch(() => null),
             ...medicion,
           });
+          // Telemetría de memoria: si falla, la persona ya tiene su respuesta.
+          void recordarRecomendaciones(dispositivoId, recomendadas).catch(() => {});
         }
         emitir({ tipo: "fin" });
       } catch (error) {

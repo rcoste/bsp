@@ -62,7 +62,10 @@ function Siluetas() {
   return (
     <ul className="koma grid-cols-1 md:max-w-[860px] md:grid-cols-2" aria-hidden>
       {[0, 1, 2].map((i) => (
-        <li key={i} className="koma-celda">
+        // La tercera ocupa las dos columnas en escritorio, igual que una
+        // tarjeta real impar: si no, la celda sobrante queda como un bloque de
+        // tinta que se lee como error de carga.
+        <li key={i} className={`koma-celda ${i === 2 ? "md:col-span-2" : ""}`}>
           <div className="speedlines flex items-start gap-3 p-3">
             <div
               className="animate-pulse"
@@ -111,7 +114,7 @@ export function VitrinaRecomendacion({
         className="sticky top-0 z-10 flex items-center gap-2 pt-4 pb-2"
         style={{ background: "var(--c-paper)" }}
       >
-        <p className="kicker min-w-0 flex-1" style={{ color: "var(--c-accent-700)" }}>
+        <p className="kicker min-w-0 flex-1 truncate" style={{ color: "var(--c-accent-700)" }}>
           {esLista
             ? "Tus guardados"
             : anclaLibre

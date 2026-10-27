@@ -8,7 +8,8 @@ import type { Entrada } from "../lista";
  * bucle importa cosas que solo existen en el servidor.
  */
 export type Evento =
-  | { tipo: "tarjeta"; anime: Anime; razon: string }
+  /** `deLista`: la tarjeta es de SU lista (ver_guardados), no una recomendación. */
+  | { tipo: "tarjeta"; anime: Anime; razon: string; deLista?: boolean }
   | { tipo: "texto"; texto: string }
   | { tipo: "chips"; chips: string[] }
   // La AI escribió en la biblioteca ("voy en el 8 de Frieren"): la pantalla
@@ -25,7 +26,7 @@ export type Turno = {
   nota?: boolean;
   /** Las tarjetas que trajo este turno de Sen Pai, para poder VOLVER a ellas
    *  (tira de miniaturas en el globo). Solo en el navegador: no viaja a la AI. */
-  set?: { ancla: string; tarjetas: { anime: Anime; razon: string }[] };
+  set?: { ancla: string; libre?: boolean; tarjetas: { anime: Anime; razon: string }[] };
 };
 
 /**

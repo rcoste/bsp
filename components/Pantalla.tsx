@@ -256,8 +256,12 @@ export function Pantalla({
       setEstancado(null);
       esperarMas.current = false;
       motivoCorte.current = null;
-      setAncla(texto);
-      setAnclaLibre(false); // ya no es el reposo: es lo que pidió
+      // El mensaje automático del arranque ("Ya vi X, Y, Z. ¿Qué me
+      // recomiendas?") no sirve de encabezado: salía entero, en mayúsculas,
+      // a dos renglones. Lo que la persona pidió de verdad, sí.
+      const anclaCorta = via === "arranque" ? "Por lo que marcaste" : texto;
+      setAncla(anclaCorta);
+      setAnclaLibre(via === "arranque");
       setAviso(null);
       // Un turno nuevo devuelve la vitrina al modo recomendación.
       setMarcandoMas(false);
@@ -383,7 +387,7 @@ export function Pantalla({
         // El globo se queda con sus tarjetas: así se puede VOLVER a una
         // recomendación anterior en vez de perderla para siempre.
         if (setDelTurno.length) {
-          const set = { ancla: texto, tarjetas: setDelTurno };
+          const set = { ancla: anclaCorta, libre: via === "arranque", tarjetas: setDelTurno };
           setMensajes((m) => {
             const i = m.length - 1;
             if (i >= 0 && m[i].de === "ai" && !m[i].nota) {
@@ -444,7 +448,7 @@ export function Pantalla({
     (set: NonNullable<Turno["set"]>) => {
       setTarjetas(set.tarjetas);
       setAncla(set.ancla);
-      setAnclaLibre(false);
+      setAnclaLibre(Boolean(set.libre));
       setViendoLista(false);
       setMarcandoMas(false);
       setAviso(null);
