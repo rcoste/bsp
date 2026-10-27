@@ -44,6 +44,8 @@
   --radius: 0px; /* en absolutamente todo, sin excepciones */
   --borde-koma: 2px solid var(--c-ink);
   --gap-koma: 2px;
+  /* El espacio blanco entre viñetas que son cosas distintas (tarjetas). */
+  --gap-medianil: 16px;
 
   /* --- motion -------------------------------------------------------- */
   --ease-view: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -173,6 +175,22 @@ body {
 
 @utility koma-celda {
   background: var(--c-surface);
+}
+
+/* Medianil: la rejilla de TARJETAS. Como en una página de manga, cada viñeta
+   es su propia caja y entre ellas hay papel. Con las tarjetas pegadas, la
+   línea entre dos tarjetas pesaba igual que las de adentro y no se sabía a
+   cuál pertenecía cada fila de botones. Cada caja mide lo suyo (start): la
+   calificación que aparece en una no estira a su vecina. */
+@utility medianil {
+  display: grid;
+  gap: var(--gap-medianil);
+  align-items: start;
+}
+
+@utility medianil-caja {
+  background: var(--c-surface);
+  border: var(--borde-koma);
 }
 
 /* Medio tono sobre las portadas. */

@@ -38,7 +38,8 @@ Regla: el acento a tamaño párrafo sobre claro usa `--c-accent-700`; sobre tint
 
 ## Componentes BSP
 
-- **Koma grid** (rejilla de viñetas): grid con `gap: 2px` sobre fondo `--c-ink` + border 2px `--c-ink`. Las celdas son `--c-surface`. Es el patrón de toda colección de cards (tendencias, recomendaciones, búsqueda).
+- **Koma grid** (rejilla de viñetas pegadas): grid con `gap: 2px` sobre fondo `--c-ink` + border 2px `--c-ink`. Las celdas son `--c-surface`. Para colecciones de portadas sueltas (la parrilla de "¿cuál has visto?") y para las divisiones DENTRO de un componente (los tercios de botones).
+- **Medianil** (rejilla de tarjetas, 2026-10-27): grid con `gap: var(--gap-medianil)` = 16px de papel; cada tarjeta es su propia caja con border 2px `--c-ink` y fondo `--c-surface`, y mide su propia altura (`align-items: start`). Es el patrón de toda colección de tarjetas con acciones (recomendaciones, guardados, búsqueda). Razón: con las tarjetas pegadas, la línea entre dos tarjetas pesaba igual que las de adentro y no se sabía a qué tarjeta pertenecía cada fila de botones. Como en un manga de verdad: viñetas distintas, papel entre ellas.
 - **Globo de diálogo** (mensajes del chat): fondo `--c-surface`, texto `--c-ink`, border 2px `--c-ink`, padding 10×14, width fit-content, cola = cuadrado de 10px rotado 45° con border top+left. Usuario: fondo `--c-accent`, texto claro, alineado a la derecha, cola a la derecha.
 - **Typing indicator**: 3 cuadrados de 6px en acento, blink 1s escalonado (0/0.15/0.3s). El texto llega completo (~550ms), nunca palabra por palabra en el aria-live.
 - **Chip de atajo** (sobre fondo tinta): transparente, texto claro, border 1px blanco al 40%, Archivo 800 11-12px, `white-space: nowrap`, hover border+texto acento-400. Toque mínimo 36-44px. Comparten estado con el input: si uno se deshabilita, todos.

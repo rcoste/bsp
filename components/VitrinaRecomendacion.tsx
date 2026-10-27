@@ -60,12 +60,9 @@ function ListaVacia({ onSeguir }: { onSeguir?: () => void }) {
 /** Las siluetas, del tamaño de las tarjetas reales para que nada brinque. */
 function Siluetas() {
   return (
-    <ul className="koma grid-cols-1 md:max-w-[860px] md:grid-cols-2" aria-hidden>
+    <ul className="medianil grid-cols-1 md:max-w-[860px] md:grid-cols-2" aria-hidden>
       {[0, 1, 2].map((i) => (
-        // La tercera ocupa las dos columnas en escritorio, igual que una
-        // tarjeta real impar: si no, la celda sobrante queda como un bloque de
-        // tinta que se lee como error de carga.
-        <li key={i} className={`koma-celda ${i === 2 ? "md:col-span-2" : ""}`}>
+        <li key={i} className="medianil-caja">
           <div className="speedlines flex items-start gap-3 p-3">
             <div
               className="animate-pulse"
@@ -138,19 +135,9 @@ export function VitrinaRecomendacion({
       ) : cargando && tarjetas.length === 0 ? (
         <Siluetas />
       ) : (
-        <ul className="koma grid-cols-1 md:max-w-[860px] md:grid-cols-2">
-          {tarjetas.map(({ anime, razon }, i) => (
-            <li
-              key={anime.id}
-              // Con un número impar de tarjetas la última ocupa las dos
-              // columnas: si no, la celda que sobra deja un bloque de tinta
-              // vacío que se lee como un error de carga.
-              className={`koma-celda ${
-                tarjetas.length % 2 === 1 && i === tarjetas.length - 1
-                  ? "md:col-span-2"
-                  : ""
-              }`}
-            >
+        <ul className="medianil grid-cols-1 md:max-w-[860px] md:grid-cols-2">
+          {tarjetas.map(({ anime, razon }) => (
+            <li key={anime.id} className="medianil-caja">
               <TarjetaAnime
                 anime={anime}
                 razon={razon}
