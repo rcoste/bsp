@@ -720,6 +720,12 @@ La app se afina con un ciclo **probar → medir → comparar → cambiar**, al e
 - **Reporte**: `node scripts/reporte-puertas.mjs [días]`. Por puerta, por campaña × puerta y por semana: visitas → marcó → 20 animes → habló → **regresó a 7 días** (solo "maduros") → costo de AI. Enseña a propósito las dos columnas que se pueden contradecir (completar vs. regresar). Compara las dos puertas más grandes con una prueba z y **dice "todavía no concluyas" con menos de 100 visitas por lado**.
 - **Regla de la casa:** una comparación a la vez en la cima del embudo. Dos a la vez se contaminan.
 
+## El motor de recomendación vive con Pablo (decisión 2026-10-26)
+
+Para que la prueba "México en inglés vs. México en español" mida SOLO el idioma, **BSP no construye motor propio**: usa el de Binge Senpai (candidatos ordenados por Jev + Match % + votos MAL + rasgos; 61% de aciertos contra 32% del método anterior). Pablo expone un endpoint sin estado (`POST /api/recs`: ids vistos/dejados/rechazados + qué pidió → candidatos con `because_mal_id`); BSP manda ids y recibe ids, sin cuentas del lado de Pablo. **La AI de BSP elige de esa lista y escribe el porqué en español**: chat, vitrina y porqué siguen siendo nuestros. Cualquier mejora al motor se pide a Pablo, nunca se parcha aquí — si no, la comparación vuelve a mezclar variables.
+
+Reglas del enchufe: **plan B automático** (si Pablo no contesta en 1.5 s, se recomienda como hoy; nunca una vitrina vacía por un servidor ajeno); la fuente es intercambiable (el mismo enchufe sirve para una copia local de `series_neighbours`/`mal_recs` si algún día BSP necesita independencia); y el aviso de privacidad debe decir que los ids de gusto viajan al servidor de Binge Senpai. Pendiente: Pablo construye el endpoint; BSP construye la herramienta de candidatos con el plan B.
+
 **La medición es la mitad del trabajo:** `/api/llegada` registra origen y búsqueda **aunque la visita no haga nada** (si no, los rebotes —que también se pagan— son invisibles), y `node scripts/reporte-campanas.mjs` contesta la única pregunta que importa: **cuánto cuesta un usuario que construyó biblioteca**, no cuánto cuesta un clic. El `origen` se escribe solo la primera vez: la campaña que pagó por traer a alguien no pierde el mérito si vuelve por otra.
 
 **La vitrina en reposo (`lib/inicio.ts`)** implementa §3b del alcance: nunca está vacía, y lo que muestra depende de quién llegó. Tres puertas, decididas en el servidor sin gastar AI:
