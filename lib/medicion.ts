@@ -1,5 +1,6 @@
 import "server-only";
 import { sql } from "./db.ts";
+import type { Clic } from "./llegada.ts";
 
 /**
  * Las dos conversiones que BSP le reporta a Google Ads, iguales a las que
@@ -27,6 +28,24 @@ export const SERIES_VEINTE = 20;
  * relee 30. Más atrás no se detecta ni se reenvía nada.
  */
 const DIAS_ATRAS = 30;
+
+/** Google rechaza con EXPIRED_CLICK un clic de más de 90 días. */
+const DIAS_VIDA_CLIC = 90;
+
+/**
+ * Anota un clic de anuncio en el historial (tabla clics_ads, migración 0010).
+ * Una visita sin clic no hace nada: nunca borra el último clic guardado. El
+ * mismo boleto dos veces (recargar la página) no crea otra fila ni le mueve
+ * la hora.
+ */
+export async function registrarClic(perfilId: string, clic: Clic | null): Promise<void> {
+  if (!clic) return;
+  await sql`
+    insert into clics_ads (perfil_id, gclid, gbraid, wbraid)
+    values (${perfilId}, ${clic.gclid}, ${clic.gbraid}, ${clic.wbraid})
+    on conflict do nothing
+  `;
+}
 
 /**
  * Busca conversiones nuevas y las guarda con su hora congelada. Se puede
@@ -85,14 +104,34 @@ export type ConversionParaGoogle = {
   moneda: string;
 };
 
-/** Todo lo detectado en los últimos días, listo para subir a Google Ads. */
+/**
+ * Todo lo detectado en los últimos días, listo para subir a Google Ads.
+ *
+ * Cada conversión viaja con el ÚLTIMO clic de anuncio que ocurrió ANTES de
+ * ella (así reparte el crédito Google) y que todavía no cumple 90 días. Ni el
+ * primer clic —puede haber caducado: lo que le pasó a Binge Senpai— ni el más
+ * reciente a secas —un clic posterior a la conversión hace que Google la
+ * rechace. Si no hay ningún clic que cumpla, la conversión no se sube.
+ *
+ * El primer contacto (origen, puerta, campaña y si lo trajo un anuncio) sigue
+ * decidiéndose con perfiles.clic_en en detectarConversiones().
+ */
 export async function conversionesRecientes(): Promise<ConversionParaGoogle[]> {
   const filas = await sql<
     { gclid: string | null; gbraid: string | null; wbraid: string | null; accion: Accion; ocurrio_en: Date }[]
   >`
-    select p.gclid, p.gbraid, p.wbraid, c.accion, c.ocurrio_en
+    select k.gclid, k.gbraid, k.wbraid, c.accion, c.ocurrio_en
       from conversiones_ads c
-      join perfiles p on p.id = c.perfil_id
+      cross join lateral (
+        select gclid, gbraid, wbraid
+          from clics_ads
+         where perfil_id = c.perfil_id
+           and ocurrio_en <= c.ocurrio_en
+           and ocurrio_en > c.ocurrio_en - make_interval(days => ${DIAS_VIDA_CLIC})
+           and ocurrio_en > now() - make_interval(days => ${DIAS_VIDA_CLIC})
+         order by ocurrio_en desc
+         limit 1
+      ) k
      where c.ocurrio_en > now() - make_interval(days => ${DIAS_ATRAS})
      order by c.ocurrio_en
   `;

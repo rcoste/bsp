@@ -1,5 +1,6 @@
 import { registrarError, sql } from "@/lib/db";
 import { leerClic, leerLlegada, leerOrigen, leerPuerta } from "@/lib/llegada";
+import { registrarClic } from "@/lib/medicion";
 import { dispositivoDePeticion } from "@/lib/sesion";
 
 /**
@@ -37,9 +38,14 @@ export async function POST(request: Request) {
   const { id: dispositivoId, cookie } = dispositivoDePeticion(request.headers);
 
   try {
-    // El origen y el clic se escriben solo la PRIMERA vez: si alguien vuelve
-    // por otra campaña, la que pagó por traerlo sigue siendo la primera.
-    // Sobrescribir le regalaría el mérito a la última.
+    // El origen, la puerta y el PRIMER clic se escriben solo la primera vez:
+    // si alguien vuelve por otra campaña, la que pagó por traerlo sigue
+    // siendo la primera en los reportes. Ese primer clic decide si al perfil
+    // lo trajo un anuncio (lib/medicion.ts).
+    //
+    // Lo que se le SUBE a Google es otra cosa: el último clic anterior a cada
+    // conversión, del historial clics_ads (registrarClic, abajo). Binge Senpai
+    // subía el primero y Google le rechazó conversiones por clic caducado.
     //
     // Abrir la app NO cuenta como día de uso: en Binge Senpai tampoco, y el
     // regreso de las dos apuestas tiene que medirse igual (ver lib/perfil.ts,
@@ -61,6 +67,7 @@ export async function POST(request: Request) {
         clic_en = coalesce(perfiles.clic_en, excluded.clic_en)
       returning id
     `;
+    if (perfil) await registrarClic(perfil.id, clic);
     // El id del perfil (no el del dispositivo) es lo que liga la grabación de
     // Clarity con la base; ver lib/clarity.ts.
     const respuesta = Response.json({ ok: true, perfil: perfil?.id ?? null });

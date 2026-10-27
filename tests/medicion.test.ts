@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "../lib/db.ts";
 import { marcar } from "../lib/lista.ts";
 import { idDePerfil } from "../lib/perfil.ts";
-import { conversionesRecientes, detectarConversiones } from "../lib/medicion.ts";
+import { conversionesRecientes, detectarConversiones, registrarClic } from "../lib/medicion.ts";
 
 /**
  * Las conversiones que BSP le reporta a Google Ads. Si esto cuenta de más,
@@ -33,7 +33,29 @@ async function persona(haceHoras: number, opciones: { clicMinutosDespues?: numbe
     )
     returning id
   `;
+  // El primer clic también entra al historial, como hace /api/llegada.
+  if (conClic) await clicA(p.id, (opciones.clicMinutosDespues ?? 0) / 60, `boleto-de-prueba-${n}`);
   return p.id;
+}
+
+/** Un clic de anuncio a `horas` de su llegada (negativo = antes de llegar). */
+async function clicA(perfilId: string, horas: number, boleto: string) {
+  await sql`
+    insert into clics_ads (perfil_id, gclid, ocurrio_en)
+    select id, ${boleto}, creado_en + make_interval(secs => ${horas * 3600})
+      from perfiles where id = ${perfilId}
+  `;
+}
+
+/** Qué boleto viaja a Google con cada conversión de esta persona. */
+async function boletosQueSeSuben(perfilId: string): Promise<Record<string, string | null>> {
+  const mios = await sql<{ gclid: string }[]>`select gclid from clics_ads where perfil_id = ${perfilId}`;
+  const boletos = new Set(mios.map((m) => m.gclid));
+  const resultado: Record<string, string | null> = {};
+  for (const c of await conversionesRecientes()) {
+    if (c.gclid && boletos.has(c.gclid)) resultado[c.conversion] = c.gclid;
+  }
+  return resultado;
 }
 
 /** Marca `cuantas` series, un segundo entre cada una, a `horas` de su llegada. */
@@ -194,5 +216,59 @@ describe("días de uso", () => {
     const filas = await diasDe(await idDePerfil(dispositivo));
     assert.equal(filas.length, 1);
     assert.ok(filas[0].ultima.getTime() >= filas[0].primera.getTime());
+  });
+});
+
+describe("qué clic se le sube a Google", () => {
+  const VEINTE = "Shelf 20 shows (day 0)";
+  const REGRESO = "Engaged return (7d)";
+  const boletoDe = async (id: string) =>
+    (await sql<{ gclid: string }[]>`select gclid from perfiles where id = ${id}`)[0].gclid;
+
+  it("un solo clic: la conversión viaja con ese clic", async () => {
+    const id = await persona(30);
+    await marcarSeries(id, 20, 1);
+    await detectarConversiones();
+    assert.deepEqual(await boletosQueSeSuben(id), { [VEINTE]: await boletoDe(id) });
+  });
+
+  it("un clic nuevo ANTES de la conversión: se sube el nuevo", async () => {
+    const id = await persona(30);
+    await clicA(id, 0.5, `${PREFIJO}-nuevo-antes`);
+    await marcarSeries(id, 20, 1);
+    await detectarConversiones();
+    assert.deepEqual(await boletosQueSeSuben(id), { [VEINTE]: `${PREFIJO}-nuevo-antes` });
+  });
+
+  it("un clic nuevo DESPUÉS de la conversión: esa se sube con el anterior; la siguiente, con el nuevo", async () => {
+    // Llega a 20 el día 0; el día 3 vuelve por otro anuncio y usa la app.
+    const id = await persona(100);
+    await marcarSeries(id, 20, 1);
+    await clicA(id, 72, `${PREFIJO}-nuevo-despues`);
+    await usoA(id, 80);
+    await detectarConversiones();
+    assert.deepEqual(await boletosQueSeSuben(id), {
+      [VEINTE]: await boletoDe(id),
+      [REGRESO]: `${PREFIJO}-nuevo-despues`,
+    });
+  });
+
+  it("un clic de más de 90 días no se sube (Google lo rechazaría)", async () => {
+    // Lo que le pasó a Binge Senpai: el único clic tiene 95 días.
+    const id = await persona(95 * 24);
+    await sql`
+      insert into conversiones_ads (perfil_id, accion, ocurrio_en)
+      values (${id}, 'regreso', now() - interval '6 days')
+    `;
+    assert.deepEqual(await boletosQueSeSuben(id), {});
+  });
+
+  it("una visita sin clic no cambia nada; el mismo boleto dos veces tampoco", async () => {
+    const id = await persona(30);
+    const antes = await sql`select gclid, ocurrio_en from clics_ads where perfil_id = ${id}`;
+    await registrarClic(id, null);
+    await registrarClic(id, { gclid: await boletoDe(id), gbraid: null, wbraid: null });
+    const despues = await sql`select gclid, ocurrio_en from clics_ads where perfil_id = ${id}`;
+    assert.deepEqual(despues, antes);
   });
 });

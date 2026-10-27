@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test": "node --test --experimental-strip-types --conditions=react-server --env-file=.env.local tests/*.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
