@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   // Solo en desarrollo: deja abrir el ensayo desde el celular en el mismo
   // wifi (casa u oficina). Sin esto Next bloquea el JavaScript y la página
   // carga pero no responde a toques. No afecta lo publicado.
-  allowedDevOrigins: ["192.168.*.*", "10.*.*.*"],
+  allowedDevOrigins: ["192.168.*.*", "10.*.*.*", "127.0.0.1"],
 };
 
 export default nextConfig;

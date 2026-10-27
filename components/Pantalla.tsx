@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Anime } from "@/lib/anime/catalogo";
+import { nombreVisible } from "@/lib/anime/nombre";
 import { leerEventos, type Turno } from "@/lib/chat/eventos";
 import type { Inicio } from "@/lib/inicio";
 import type { Calificacion, Entrada, Marca } from "@/lib/lista";
@@ -544,7 +545,7 @@ export function Pantalla({
         // Sin porqué: nadie te lo recomendó, tú lo pediste. Inventar una
         // razón aquí sería exactamente la vaguedad que nos iguala a ChatGPT.
         setTarjetas([{ anime, razon: "" }]);
-        setAncla(anime.titulo);
+        setAncla(nombreVisible(anime));
         setAnclaLibre(false);
         setAviso(null);
         setViendoLista(false);
@@ -753,15 +754,26 @@ export function Pantalla({
   // La reacción al tercer marcado vive aquí, fuera del updater.
   // La meta: que en 20 segundos, sin teclear, la app ya sepa algo de ti.
   const yaArranco = useRef(false);
+  // Lo que ya viajó a la AI como "ya vi…": lo marcado después cuenta como
+  // "nuevas" para el botón de actualizar las recomendaciones.
+  const yaContadas = useRef<Set<number>>(new Set());
   useEffect(() => {
     if (marcados.size < 3 || yaArranco.current) return;
     yaArranco.current = true;
+    yaContadas.current = new Set(marcados);
     const titulos = animes
       .filter((a) => marcados.has(a.id))
-      .map((a) => a.titulo)
+      .map((a) => nombreVisible(a))
       .join(", ");
     enviar(`Ya vi ${titulos}. ¿Qué me recomiendas?`, "arranque");
   }, [marcados, animes, enviar]);
+
+  const nuevas = animes.filter((a) => marcados.has(a.id) && !yaContadas.current.has(a.id));
+  const actualizarConNuevas = () => {
+    if (!nuevas.length) return;
+    for (const a of nuevas) yaContadas.current.add(a.id);
+    enviar(`También ya vi ${nuevas.map((a) => nombreVisible(a)).join(", ")}. ¿Qué me recomiendas?`, "arranque");
+  };
 
   // La recomendación manda, PERO se puede volver a la parrilla a seguir
   // marcando ("marcandoMas"): cortar el marcado en 3 toques era tirar el
@@ -774,9 +786,14 @@ export function Pantalla({
       (pensando && yaArranco.current));
 
   // El total marcado de verdad (parrilla + tarjetas + chat), para el medidor.
-  const totalMarcados = Object.values(marcas).filter(
-    (e) => e.marca !== "descartado",
-  ).length;
+  // Lo tocado en la parrilla cuenta al instante, sin esperar a que el
+  // servidor confirme: el medidor se quedaba en 0 mientras la persona marcaba.
+  const totalMarcados = new Set([
+    ...Object.entries(marcas)
+      .filter(([, e]) => e.marca !== "descartado")
+      .map(([id]) => Number(id)),
+    ...marcados,
+  ]).size;
 
   // En Clarity se marca la grabación en la que la persona cruza los 20
   // títulos: es la conversión de "20 animes" y la que más importa ver.
@@ -813,11 +830,28 @@ export function Pantalla({
       }}
       esLista={viendoLista}
       anclaLibre={anclaLibre}
+      // Solo para quien empezó por la parrilla: a quien vuelve o llegó con una
+      // búsqueda no se le pone una tarea debajo de lo que vino a ver.
+      seguirMarcando={
+        yaContadas.current.size > 0
+          ? {
+              animes,
+              marcados,
+              onMarcar: alternar,
+              total: totalMarcados,
+              meta: META_ARRANQUE,
+              nuevas: pensando ? 0 : nuevas.length,
+              onActualizar: actualizarConNuevas,
+            }
+          : undefined
+      }
     />
   ) : (
     <VitrinaSeleccion
       animes={animes}
       marcados={marcados}
+      total={totalMarcados}
+      meta={META_ARRANQUE}
       onMarcar={alternar}
       onSaltar={() => {
         setSaltado(true);
@@ -875,7 +909,7 @@ export function Pantalla({
       role="status"
     >
       <span className="max-w-[220px] truncate text-[13px]">
-        Descartaste {deshacer.tarjeta.anime.titulo}
+        Descartaste {nombreVisible(deshacer.tarjeta.anime)}
       </span>
       <button
         type="button"
@@ -919,6 +953,7 @@ export function Pantalla({
       estancado={estancado !== null}
       prellenar={prellenar}
       onVolverSet={volverASet}
+      idsEnVitrina={tarjetas.map((t) => t.anime.id)}
     />
   );
 
@@ -946,7 +981,7 @@ export function Pantalla({
               className="h-[10px] w-[10px]"
               style={{ background: "var(--c-accent)" }}
             />
-            <span className="kicker">La vitrina</span>
+            <span className="kicker">Qué ver</span>
             {avisoDemo}
           </header>
           <section aria-label="Anime" className="min-h-0 flex-1">

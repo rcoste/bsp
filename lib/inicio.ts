@@ -33,7 +33,11 @@ export type Inicio =
       animes: Anime[]; // la parrilla, para cuando quiera marcar
     };
 
-const SALUDO_ARRANQUE = "Dime qué acabas de ver y te digo qué sigue, nakama.";
+/** Va junto a la parrilla, así que apunta a ella: antes decía "Dime qué
+ *  acabas de ver" mientras la vitrina preguntaba "¿Cuál de estos has visto?",
+ *  y no quedaba claro si había que escribir o tocar. */
+const SALUDO_ARRANQUE =
+  "Toca las que ya viste — o escríbeme cuál acabas de terminar y te digo qué sigue.";
 
 /** El de la parrilla para quien llega de un anuncio: pide, pero explica. */
 const SALUDO_FRIO_PARRILLA =

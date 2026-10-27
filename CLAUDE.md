@@ -726,6 +726,17 @@ Al volver, la vitrina enseña **lo que se le dejó la última vez** ("Te dejé e
 
 El encabezado del arranque es **"Por lo que marcaste"**, no el mensaje automático entero ("Ya vi X, Y, Z. ¿Qué me recomiendas?" salía en mayúsculas a dos renglones), y el ancla se corta a un renglón.
 
+## Segunda evaluación de UI/UX (2026-10-27) — lo que NO hay que reintroducir
+
+- **El nombre que se enseña es el reconocible**, no el romaji: oficial en Latinoamérica (`tituloEs`, ~2 mil, del catálogo de Pablo) → inglés → romaji, vía `nombreVisible()` en `lib/anime/nombre.ts`. `titulo` (romaji) sigue siendo la llave para la AI, la búsqueda y el candado. En una parrilla de "¿cuál has visto?", un título que no se reconoce es una portada que no se marca.
+- **La parrilla no desaparece al tercer toque**: sigue DEBAJO de las recomendaciones ("¿Cuáles más has visto?") con el medidor "Llevas N de 20" y un botón "Recomiéndame con las N nuevas" pegado al pie. No se re-recomienda en cada toque (cuesta una conversación).
+- **Tarjetas separadas por medianil** (16px de papel, cada una en su caja) y en una o dos columnas según el ancho de la VITRINA (container query), no de la pantalla.
+- **El porqué va debajo del título, en minúsculas**, y no repite episodios/año/plataforma (regla en `instrucciones.ts`).
+- **El reloj de "se cortó a media respuesta" (10 s) solo corre con el texto ya empezado.** Entre la última portada y la primera palabra el modelo sigue trabajando; ese silencio llegó a 15 s y la app tiraba respuestas sanas.
+- En celular, "Se cortó / No pude contestarte · Reintentar" se ve en el dock, no solo en el hilo cerrado.
+- Géneros en español (`lib/anime/generos.ts`); "dónde verlo" con un solo estilo y siempre tocable (`lib/anime/donde.ts`).
+- Medición tras el cambio de instrucciones: primera portada 3.4 s, $0.0084 por conversación, 10/10.
+
 ## Volver a sets anteriores y las dos direcciones (2026-10-26)
 
 - **Tira de miniaturas en el globo** (`Dock.tsx`): cada turno de Sen Pai que trajo tarjetas guarda su set en `Turno.set` (solo en el navegador; `historialParaLaAI` lo quita antes de mandar). Tocar la tira devuelve ese set a la vitrina con su ancla. Antes cada recomendación borraba la anterior para siempre. Evento `volver_set`.

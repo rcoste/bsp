@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { Anime } from "@/lib/anime/catalogo";
+import { nombreOriginal, nombreVisible } from "@/lib/anime/nombre";
+import { enlaceDonde } from "@/lib/anime/donde";
+import { generoEnEspanol } from "@/lib/anime/generos";
 import type { Detalle } from "@/lib/anime/detalle";
 import { Portada } from "./Vitrina";
 
@@ -23,19 +26,6 @@ const ESTADOS: Record<string, string> = {
   "Not yet aired": "Aún no sale",
 };
 
-/**
- * Dónde buscar cuando no tenemos el link directo a la serie. El texto lo
- * dice sin prometer de más: "Buscar en", no "Ver en" (§5: el link es de
- * búsqueda, no de disponibilidad garantizada).
- */
-const BUSCADORES: Record<string, (titulo: string) => string> = {
-  Crunchyroll: (t) => `https://www.crunchyroll.com/search?q=${encodeURIComponent(t)}`,
-  Netflix: (t) => `https://www.netflix.com/search?q=${encodeURIComponent(t)}`,
-  "Amazon Prime Video": (t) => `https://www.primevideo.com/search/ref=atv_nb_sr?phrase=${encodeURIComponent(t)}`,
-  "Disney Plus": (t) => `https://www.disneyplus.com/search?q=${encodeURIComponent(t)}`,
-  HIDIVE: (t) => `https://www.hidive.com/search?q=${encodeURIComponent(t)}`,
-  Hulu: (t) => `https://www.hulu.com/search?q=${encodeURIComponent(t)}`,
-};
 
 function duracion(anime: Anime): string | null {
   if (anime.tipo === "movie") return "Película";
@@ -78,7 +68,8 @@ export function HojaDetalle({ anime, escritorio, onCerrar, onAbrir }: Props) {
   }, [onCerrar]);
 
   const estado = anime.estado ? ESTADOS[anime.estado] : null;
-  const romaji = anime.tituloEn && anime.tituloEn !== anime.titulo ? anime.tituloEn : null;
+  const nombre = nombreVisible(anime);
+  const romaji = nombreOriginal(anime);
   const datosDuros = [duracion(anime), estado, anime.anio].filter(Boolean).join(" · ");
 
   return (
@@ -93,7 +84,7 @@ export function HojaDetalle({ anime, escritorio, onCerrar, onAbrir }: Props) {
       <section
         role="dialog"
         aria-modal="true"
-        aria-label={`Detalle de ${anime.titulo}`}
+        aria-label={`Detalle de ${nombre}`}
         className="anim-view relative flex flex-col"
         style={{
           height: escritorio ? "100%" : "85%",
@@ -134,7 +125,7 @@ export function HojaDetalle({ anime, escritorio, onCerrar, onAbrir }: Props) {
             </div>
             <div className="min-w-0 flex-1">
               {/* Hasta 3 líneas y corte: los títulos de anime son largos de verdad. */}
-              <h2 className="font-display line-clamp-3 text-[20px] leading-tight">{anime.titulo}</h2>
+              <h2 className="font-display line-clamp-3 text-[20px] leading-tight">{nombre}</h2>
               {romaji && (
                 <p className="line-clamp-1 text-[12px]" style={{ color: "var(--c-muted)" }}>
                   {romaji}
@@ -143,7 +134,7 @@ export function HojaDetalle({ anime, escritorio, onCerrar, onAbrir }: Props) {
               {datosDuros && <p className="font-display mt-2 text-[13px] leading-tight">{datosDuros}</p>}
               {detalle && detalle.generos.length > 0 && (
                 <p className="mt-1 text-[12px]" style={{ color: "var(--c-muted)" }}>
-                  {detalle.generos.join(" · ")}
+                  {[...new Set(detalle.generos.map(generoEnEspanol))].join(" · ")}
                 </p>
               )}
             </div>
@@ -179,19 +170,18 @@ export function HojaDetalle({ anime, escritorio, onCerrar, onAbrir }: Props) {
               </p>
               <ul className="flex flex-col gap-2">
                 {anime.donde.map((d) => {
-                  const buscador = BUSCADORES[d.nombre];
-                  const href = d.url ?? buscador?.(anime.titulo) ?? null;
-                  if (!href) return null;
+                  const enlace = enlaceDonde(d, anime);
+                  if (!enlace) return null;
                   return (
                     <li key={d.nombre}>
                       <a
-                        href={href}
+                        href={enlace.href}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="font-display flex min-h-[44px] items-center px-3 text-[12px] uppercase tracking-[0.08em]"
                         style={{ border: "var(--borde-koma)" }}
                       >
-                        {d.url ? "Ver en" : "Buscar en"} {d.nombre}
+                        {enlace.directo ? "Ver en" : "Buscar en"} {d.nombre}
                       </a>
                     </li>
                   );
@@ -218,7 +208,7 @@ export function HojaDetalle({ anime, escritorio, onCerrar, onAbrir }: Props) {
                       <Portada anime={r} ancho={36} />
                       <span className="min-w-0 flex-1">
                         <span className="font-display line-clamp-2 block text-[14px] leading-tight">
-                          {r.titulo}
+                          {nombreVisible(r)}
                         </span>
                         <span className="block text-[11px]" style={{ color: "var(--c-muted)" }}>
                           {[duracion(r), r.anio].filter(Boolean).join(" · ")}

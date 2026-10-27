@@ -129,6 +129,10 @@ for (;;) {
       id: malId,
       titulo: f.titulo ?? `Anime ${malId}`,
       tituloEn: f.titulo_en ?? null,
+      // El nombre oficial en Latinoamérica cuando existe ("Ataque a los
+      // Titanes", "El viaje de Chihiro"): es el que la gente RECONOCE, y la
+      // parrilla de "¿cuál has visto?" vive de que lo reconozcan.
+      tituloEs: f.titulo_es ?? null,
       anio: f.year ?? null,
       estado: ESTADOS[f.status] ?? null,
       portada: f.portada ?? null,

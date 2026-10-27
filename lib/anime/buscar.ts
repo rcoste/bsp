@@ -1,6 +1,7 @@
 import "server-only";
 import { sql } from "../db.ts";
 import { ADULTOS, datosDeTarjeta, type Anime } from "./catalogo.ts";
+import { nombreVisible } from "./nombre.ts";
 import { normalizar } from "./titulos.ts";
 
 /**
@@ -100,7 +101,8 @@ export async function sugerencias(consulta: string): Promise<Sugerencia[]> {
     normalizados.push(n);
     elegidos.push({
       id: f.datos.id,
-      titulo: f.datos.titulo,
+      // Lo que se enseña es el nombre reconocible, no el romaji.
+      titulo: nombreVisible(f.datos),
       anio: f.datos.anio ?? null,
       portada: f.datos.portada ?? null,
     });

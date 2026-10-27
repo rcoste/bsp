@@ -1,17 +1,18 @@
 "use client";
 
+import { useRef } from "react";
 import type { Anime } from "@/lib/anime/catalogo";
 import type { Calificacion, Entrada, Marca } from "@/lib/lista";
 import { TarjetaAnime } from "./TarjetaAnime";
+import { Medidor, ParrillaPortadas } from "./Vitrina";
 
 export type Tarjeta = { anime: Anime; razon: string };
 
 /**
  * El modo recomendación: las tarjetas en koma grid.
  *
- * El porqué va como kicker rojo ARRIBA del título, no como pie de foto: es lo
- * primero que se lee, porque es lo que ninguna lista genérica puede darte.
- * Ver DESIGN.md → "El porqué".
+ * El porqué va justo debajo del título, en rojo y en minúsculas normales: se
+ * lee segundo, después del nombre. Ver DESIGN.md → "El porqué".
  */
 
 type Props = {
@@ -32,6 +33,20 @@ type Props = {
    *  persona pidió, así que no se le antepone "Para:". */
   anclaLibre?: boolean;
   onAbrir?: (anime: Anime) => void;
+  /** La parrilla sigue DEBAJO de las recomendaciones después del arranque.
+   *  Antes desaparecía al tercer toque y volver dependía de un botón chico,
+   *  justo cuando la meta (20 marcados el día uno) es lo que más retiene. */
+  seguirMarcando?: {
+    animes: Anime[];
+    marcados: Set<number>;
+    onMarcar: (id: number) => void;
+    total: number;
+    meta: number;
+    /** Marcadas desde la última recomendación: no se re-recomienda solo en
+     *  cada toque (cuesta una conversación); la persona decide cuándo. */
+    nuevas: number;
+    onActualizar: () => void;
+  };
 };
 
 /** La lista vacía NO se esconde: explica dónde van a vivir las cosas.
@@ -60,7 +75,7 @@ function ListaVacia({ onSeguir }: { onSeguir?: () => void }) {
 /** Las siluetas, del tamaño de las tarjetas reales para que nada brinque. */
 function Siluetas() {
   return (
-    <ul className="medianil grid-cols-1 md:max-w-[860px] md:grid-cols-2" aria-hidden>
+    <ul className="medianil grid-cols-1 md:max-w-[860px] @2xl:grid-cols-2" aria-hidden>
       {[0, 1, 2].map((i) => (
         <li key={i} className="medianil-caja">
           <div className="speedlines flex items-start gap-3 p-3">
@@ -102,9 +117,12 @@ export function VitrinaRecomendacion({
   esLista,
   anclaLibre,
   onAbrir,
+  seguirMarcando,
 }: Props) {
+  const caja = useRef<HTMLDivElement>(null);
+  const parrilla = useRef<HTMLElement>(null);
   return (
-    <div className="anim-view h-full overflow-y-auto overscroll-contain px-4 pb-4 md:px-6">
+    <div ref={caja} className="anim-view @container h-full overflow-y-auto overscroll-contain px-4 pb-4 md:px-6">
       {/* El encabezado ancla. Sin él, quien sube en la conversación ve un
           mensaje viejo junto a una vitrina nueva, y la app le está mintiendo. */}
       <div
@@ -121,7 +139,13 @@ export function VitrinaRecomendacion({
         {medidor && medidor.marcados < medidor.meta && (
           <button
             type="button"
-            onClick={medidor.onSeguir}
+            onClick={
+              // Si la parrilla ya está abajo, el botón lleva a ella en vez de
+              // cambiar de vista.
+              seguirMarcando && !esLista
+                ? () => parrilla.current?.scrollIntoView({ behavior: "smooth" })
+                : medidor.onSeguir
+            }
             className="kicker shrink-0 px-[8px] py-[5px]"
             style={{ border: "1px solid var(--c-ink)" }}
           >
@@ -135,7 +159,10 @@ export function VitrinaRecomendacion({
       ) : cargando && tarjetas.length === 0 ? (
         <Siluetas />
       ) : (
-        <ul className="medianil grid-cols-1 md:max-w-[860px] md:grid-cols-2">
+        // Dos columnas según el ANCHO DE LA VITRINA, no de la pantalla: en una
+        // laptop chica o tablet la vitrina mide ~460px y dos columnas partían
+        // "No, otra cosa" en tres renglones.
+        <ul className="medianil grid-cols-1 md:max-w-[860px] @2xl:grid-cols-2">
           {tarjetas.map(({ anime, razon }) => (
             <li key={anime.id} className="medianil-caja">
               <TarjetaAnime
@@ -150,6 +177,37 @@ export function VitrinaRecomendacion({
             </li>
           ))}
         </ul>
+      )}
+
+      {seguirMarcando && !esLista && (
+        <section ref={parrilla} aria-label="Seguir marcando" className="mt-10 md:max-w-[760px]">
+          <Medidor total={seguirMarcando.total} meta={seguirMarcando.meta} />
+          <h2 className="titulo-seccion mt-1 mb-1">¿Cuáles más has visto?</h2>
+          <p className="mb-3 text-[13px]" style={{ color: "var(--c-muted)" }}>
+            Cada una que marques afina lo de arriba.
+          </p>
+          <ParrillaPortadas
+            animes={seguirMarcando.animes}
+            marcados={seguirMarcando.marcados}
+            onMarcar={seguirMarcando.onMarcar}
+          />
+          {/* Pegado al pie mientras marcas: si viviera arriba de la parrilla,
+              a media parrilla ya no se vería. */}
+          {seguirMarcando.nuevas > 0 && (
+            <div className="sticky bottom-0 pt-3 pb-1" style={{ background: "var(--c-paper)" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  seguirMarcando.onActualizar();
+                  caja.current?.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                className="btn-primario w-full md:w-auto"
+              >
+                Recomiéndame con {seguirMarcando.nuevas === 1 ? "la nueva" : `las ${seguirMarcando.nuevas} nuevas`}
+              </button>
+            </div>
+          )}
+        </section>
       )}
     </div>
   );

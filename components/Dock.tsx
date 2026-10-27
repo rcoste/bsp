@@ -51,6 +51,9 @@ type Props = {
   prellenar?: { texto: string; clave: number } | null;
   /** Tocar la tira de miniaturas de un globo vuelve a ese set en la vitrina. */
   onVolverSet?: (set: NonNullable<Turno["set"]>) => void;
+  /** Los ids que la vitrina enseña ahora: la tira de ese set no dice
+   *  "Volver" (ya estás ahí). */
+  idsEnVitrina?: number[];
 };
 
 /** Lo que se espera a que dejes de teclear antes de preguntarle a la base. */
@@ -76,6 +79,7 @@ export function Dock({
   estancado,
   prellenar,
   onVolverSet,
+  idsEnVitrina = [],
 }: Props) {
   const [texto, setTexto] = useState("");
   const [abierto, setAbierto] = useState(false);
@@ -234,7 +238,9 @@ export function Dock({
             type="button"
             onClick={onGuardados}
             className="chip-tinta flex items-center gap-[6px]"
-            style={{ borderColor: "var(--c-accent)" }}
+            // Resaltado solo cuando hay algo guardado: para quien llega nuevo,
+            // el chip más llamativo llevaba a una pantalla vacía.
+            style={cuantosGuardados > 0 ? { borderColor: "var(--c-accent)" } : undefined}
           >
             <Bookmark size={14} strokeWidth={2.2} aria-hidden />
             Mis guardados
@@ -386,9 +392,14 @@ export function Dock({
               {/* La tira de miniaturas: cada recomendación anterior sigue a un
                   toque. Sin esto, cada set nuevo borraba el anterior para
                   siempre (el alcance lo daba por hecho y no existía). */}
-              {m.set && onVolverSet && (
+              {m.set && onVolverSet && (() => {
+                const enPantalla =
+                  m.set.tarjetas.length === idsEnVitrina.length &&
+                  m.set.tarjetas.every((t, j) => t.anime.id === idsEnVitrina[j]);
+                return (
                 <button
                   type="button"
+                  disabled={enPantalla}
                   onClick={() => onVolverSet(m.set!)}
                   aria-label={`Volver a las ${m.set.tarjetas.length} recomendaciones para «${m.set.ancla}»`}
                   className="fila-scroll mt-2 min-h-[44px] max-w-[85%] items-center gap-[6px]"
@@ -399,10 +410,11 @@ export function Dock({
                     </span>
                   ))}
                   <span className="kicker ml-1 shrink-0" style={{ color: "var(--c-on-ink-border)" }}>
-                    Volver
+                    {enPantalla ? "En la vitrina" : "Volver"}
                   </span>
                 </button>
-              )}
+                );
+              })()}
             </li>
           ))}
           {pensando && (
@@ -549,6 +561,23 @@ export function Dock({
           )}
         </button>
 
+        {/* El aviso de "se cortó / no pude" vivía solo en el hilo completo, y
+            en celular el hilo está cerrado: la persona no se enteraba. */}
+        {!abierto && reintentar && !pensando && (
+          <div className="flex items-center gap-3 px-4 pb-2 text-[13px]" style={{ color: "var(--c-on-ink-border)" }}>
+            <span className="min-w-0 flex-1">
+              {estancado ? "Se cortó a media respuesta." : "No pude contestarte."}
+            </span>
+            <button
+              type="button"
+              onClick={reintentar}
+              className="chip-tinta min-h-[44px] shrink-0"
+              style={{ borderColor: "var(--c-accent)" }}
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
         {!abierto && compositor()}
       </section>
     </>

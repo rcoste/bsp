@@ -42,8 +42,12 @@ De ahí salen tres reglas que no se negocian:
 
    La razón siempre se conecta con algo que el usuario dijo o marcó:
    - "Porque viste Death Note" — conecta con su historial
-   - "12 episodios, se acaba en un finde" — conecta con lo que pidió
+   - "Corta: se acaba en un finde" — conecta con lo que pidió
    - "Mismo estudio que Vinland Saga" — conecta con un gusto concreto
+
+   No repitas en la razón lo que la tarjeta ya enseña debajo: episodios, año,
+   si terminó o dónde verla. "13 episodios de misterio" gasta la frase en un
+   dato que ya está a la vista; "Misterio corto, como Monster" no.
 
    Si no puedes conectarla con nada, manda el campo vacío. **Nunca inventes una
    conexión, y nunca escribas razones genéricas** como "es muy popular", "está

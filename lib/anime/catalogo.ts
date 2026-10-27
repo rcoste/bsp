@@ -35,6 +35,10 @@ export type Anime = {
   id: number;
   titulo: string;
   tituloEn: string | null;
+  /** El nombre oficial en Latinoamérica, si existe (~2 mil títulos). Para
+   *  mostrar, usar nombreVisible() de lib/anime/nombre.ts, nunca este campo
+   *  suelto. `titulo` sigue siendo la llave para la AI y la búsqueda. */
+  tituloEs?: string | null;
   anio: number | null;
   estado: string | null;
   portada: string | null;
@@ -126,6 +130,7 @@ export function datosDeTarjeta(datos: Anime): Anime {
     id: datos.id,
     titulo: datos.titulo,
     tituloEn: datos.tituloEn,
+    tituloEs: datos.tituloEs ?? null,
     anio: datos.anio,
     estado: datos.estado,
     portada: datos.portada,

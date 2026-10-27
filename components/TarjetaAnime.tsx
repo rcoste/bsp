@@ -2,6 +2,8 @@
 
 import { Bookmark, Check, Eye, X } from "lucide-react";
 import type { Anime } from "@/lib/anime/catalogo";
+import { enlaceDonde } from "@/lib/anime/donde";
+import { nombreOriginal, nombreVisible } from "@/lib/anime/nombre";
 import type { Calificacion, Entrada, Marca } from "@/lib/lista";
 import { Portada } from "./Vitrina";
 
@@ -95,9 +97,9 @@ export function TarjetaAnime({
 }: Props) {
   const marca = entrada?.marca ?? null;
   const estado = anime.estado ? ESTADOS[anime.estado] : null;
-  // El romaji solo si aporta: repetir el mismo título dos veces es ruido.
-  const romaji =
-    anime.tituloEn && anime.tituloEn !== anime.titulo ? anime.tituloEn : null;
+  // Arriba el nombre que la gente reconoce; el romaji abajo, solo si es otro.
+  const nombre = nombreVisible(anime);
+  const romaji = nombreOriginal(anime);
 
   return (
     <article className={saliendo ? "anim-descarte" : undefined}>
@@ -106,21 +108,15 @@ export function TarjetaAnime({
           <button
             type="button"
             onClick={onAbrir}
-            aria-label={`Ver detalle de ${anime.titulo}`}
+            aria-label={`Ver detalle de ${nombre}`}
             className="shrink-0"
           >
             <Portada anime={anime} ancho={92} />
           </button>
 
           <div className="min-w-0 flex-1">
-            {razon && (
-              <p className="kicker mb-1" style={{ color: "var(--c-accent-700)" }}>
-                {razon}
-              </p>
-            )}
-
             <h3 className="font-display line-clamp-2 text-[16px] leading-tight">
-              {anime.titulo}
+              {nombre}
             </h3>
             {romaji && (
               <p
@@ -128,6 +124,18 @@ export function TarjetaAnime({
                 style={{ color: "var(--c-muted)" }}
               >
                 {romaji}
+              </p>
+            )}
+
+            {/* El porqué: DEBAJO del título y en minúsculas normales. Arriba y
+                en mayúsculas rojas ocupaba 4-5 renglones y se leía antes que
+                el nombre del anime, que es lo primero que alguien busca. */}
+            {razon && (
+              <p
+                className="mt-1 text-[13px] font-semibold leading-snug"
+                style={{ color: "var(--c-accent-700)" }}
+              >
+                {razon}
               </p>
             )}
 
@@ -155,34 +163,34 @@ export function TarjetaAnime({
                 plataforma es peor que callarse. */}
             {anime.donde.length > 0 && (
               <ul className="mt-2 flex flex-wrap gap-1">
-                {anime.donde.map((d) => (
-                  <li key={d.nombre}>
-                    {d.url ? (
-                      <a
-                        href={d.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="kicker inline-block px-[6px] py-[3px]"
-                        style={{
-                          border: "1px solid var(--c-ink)",
-                          color: "var(--c-ink)",
-                        }}
-                      >
-                        {d.nombre}
-                      </a>
-                    ) : (
-                      <span
-                        className="kicker inline-block px-[6px] py-[3px]"
-                        style={{
-                          border: "1px solid var(--c-neutral-300)",
-                          color: "var(--c-muted)",
-                        }}
-                      >
-                        {d.nombre}
-                      </span>
-                    )}
-                  </li>
-                ))}
+                {/* Todas con el mismo estilo y todas tocables: el link
+                    directo lleva a la serie, el otro al buscador de la
+                    plataforma. Antes las que no tenían link salían en gris y
+                    se leían como "no disponible". */}
+                {anime.donde.map((d) => {
+                  const enlace = enlaceDonde(d, anime);
+                  const estilo = { border: "1px solid var(--c-ink)", color: "var(--c-ink)" };
+                  return (
+                    <li key={d.nombre}>
+                      {enlace ? (
+                        <a
+                          href={enlace.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={`${enlace.directo ? "Ver en" : "Buscar en"} ${d.nombre}`}
+                          className="kicker inline-block px-[6px] py-[3px]"
+                          style={estilo}
+                        >
+                          {d.nombre}
+                        </a>
+                      ) : (
+                        <span className="kicker inline-block px-[6px] py-[3px]" style={estilo}>
+                          {d.nombre}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
