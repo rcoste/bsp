@@ -19,7 +19,14 @@ export type Evento =
 
 /** `nota`: un aviso de la app en el hilo (un fallo, un tope) que se ve como
  *  globo de Sen Pai pero NO viaja a la AI como historial. */
-export type Turno = { de: "ai" | "tu"; texto: string; nota?: boolean };
+export type Turno = {
+  de: "ai" | "tu";
+  texto: string;
+  nota?: boolean;
+  /** Las tarjetas que trajo este turno de Sen Pai, para poder VOLVER a ellas
+   *  (tira de miniaturas en el globo). Solo en el navegador: no viaja a la AI. */
+  set?: { ancla: string; tarjetas: { anime: Anime; razon: string }[] };
+};
 
 /**
  * Lee el flujo de eventos con nombre que manda el servidor.

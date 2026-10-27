@@ -6,6 +6,7 @@ import { ArrowUp, Bookmark, X } from "lucide-react";
 import type { Turno } from "@/lib/chat/eventos";
 import type { Sugerencia } from "@/lib/anime/buscar";
 import { Escribiendo, Globo } from "./Globo";
+import { Portada } from "./Vitrina";
 
 /**
  * El dock móvil: la barra de tinta de abajo.
@@ -48,6 +49,8 @@ type Props = {
   estancado?: boolean;
   /** Texto que la app devuelve al campo (tras cancelar o fallar). */
   prellenar?: { texto: string; clave: number } | null;
+  /** Tocar la tira de miniaturas de un globo vuelve a ese set en la vitrina. */
+  onVolverSet?: (set: NonNullable<Turno["set"]>) => void;
 };
 
 /** Lo que se espera a que dejes de teclear antes de preguntarle a la base. */
@@ -72,6 +75,7 @@ export function Dock({
   reintentar,
   estancado,
   prellenar,
+  onVolverSet,
 }: Props) {
   const [texto, setTexto] = useState("");
   const [abierto, setAbierto] = useState(false);
@@ -372,7 +376,27 @@ export function Dock({
         <ul className="flex flex-col gap-4">
           {mensajes.map((m, i) => (
             <li key={i}>
-              <Globo turno={m} />
+              {(m.texto || !m.set) && <Globo turno={m} />}
+              {/* La tira de miniaturas: cada recomendación anterior sigue a un
+                  toque. Sin esto, cada set nuevo borraba el anterior para
+                  siempre (el alcance lo daba por hecho y no existía). */}
+              {m.set && onVolverSet && (
+                <button
+                  type="button"
+                  onClick={() => onVolverSet(m.set!)}
+                  aria-label={`Volver a las ${m.set.tarjetas.length} recomendaciones para «${m.set.ancla}»`}
+                  className="fila-scroll mt-2 min-h-[44px] max-w-[85%] items-center gap-[6px]"
+                >
+                  {m.set.tarjetas.map((t) => (
+                    <span key={t.anime.id} className="shrink-0">
+                      <Portada anime={t.anime} ancho={28} />
+                    </span>
+                  ))}
+                  <span className="kicker ml-1 shrink-0" style={{ color: "var(--c-on-ink-border)" }}>
+                    Volver
+                  </span>
+                </button>
+              )}
             </li>
           ))}
           {pensando && (

@@ -29,6 +29,8 @@ export const NOMBRES_EVENTO = [
   "volver_parrilla",
   /** Abrió la hoja de detalle de un anime. datos.animeId */
   "detalle",
+  /** Volvió a un set de tarjetas anterior desde la tira del globo. */
+  "volver_set",
 ] as const;
 
 export type NombreEvento = (typeof NOMBRES_EVENTO)[number];

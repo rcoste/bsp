@@ -27,8 +27,11 @@ const ESTANCADO_MS = 10_000;
 /** Con estos mensajes por delante se avisa que se acerca el tope (§3.8). */
 const AVISO_QUEDAN = 3;
 
-/** El historial que viaja a la AI: sin las notas de la app (fallos, topes). */
-const historialParaLaAI = (m: Turno[]) => m.filter((t) => !t.nota);
+/** El historial que viaja a la AI: sin las notas de la app (fallos, topes) y
+ *  sin los sets de tarjetas (son del navegador; mandarlos pesaría ~1.5 KB por
+ *  turno y no le dicen nada al modelo que no sepa ya). */
+const historialParaLaAI = (m: Turno[]): Turno[] =>
+  m.filter((t) => !t.nota).map((t) => ({ de: t.de, texto: t.texto }));
 
 const CHIPS_INICIALES = [
   "Acabé una serie…", // con "…": prellena el campo en vez de mandar (ver Dock)
@@ -206,10 +209,8 @@ export function Pantalla({
           const copia = [...previos];
           const ultimo = copia[copia.length - 1];
           if (ultimo?.de === "ai") {
-            copia[copia.length - 1] = {
-              de: "ai",
-              texto: ultimo.texto + palabra,
-            };
+            // Se conservan los demás campos del globo (el set de tarjetas).
+            copia[copia.length - 1] = { ...ultimo, texto: ultimo.texto + palabra };
           } else {
             copia.push({ de: "ai", texto: palabra });
           }
@@ -265,6 +266,8 @@ export function Pantalla({
       let primeraTarjeta = true;
       let abrioBurbuja = false;
       let hubeSenal = false;
+      // Lo que trajo este turno, para la tira de miniaturas del globo.
+      const setDelTurno: Tarjeta[] = [];
 
       const control = new AbortController();
       controlador.current = control;
@@ -351,6 +354,7 @@ export function Pantalla({
                 : [...previas, { anime: evento.anime, razon: evento.razon }],
             );
             primeraTarjeta = false;
+            setDelTurno.push({ anime: evento.anime, razon: evento.razon });
           } else if (evento.tipo === "texto") {
             senal();
             if (!abrioBurbuja) {
@@ -374,6 +378,22 @@ export function Pantalla({
           } else if (evento.tipo === "fin") {
             if (relojEstancado !== null) window.clearTimeout(relojEstancado);
           }
+        }
+
+        // El globo se queda con sus tarjetas: así se puede VOLVER a una
+        // recomendación anterior en vez de perderla para siempre.
+        if (setDelTurno.length) {
+          const set = { ancla: texto, tarjetas: setDelTurno };
+          setMensajes((m) => {
+            const i = m.length - 1;
+            if (i >= 0 && m[i].de === "ai" && !m[i].nota) {
+              const copia = [...m];
+              copia[i] = { ...copia[i], set };
+              return copia;
+            }
+            // Hubo tarjetas pero ningún texto: un globo vacío con la tira.
+            return [...m, { de: "ai", texto: "", set }];
+          });
         }
 
         // §3.8: el aviso ANTES del tope, con voz suave y en el hilo.
@@ -417,6 +437,20 @@ export function Pantalla({
       }
     },
     [revelar, quitarUltimoTuyo],
+  );
+
+  /** Volver a un set anterior desde la tira de miniaturas de su globo. */
+  const volverASet = useCallback(
+    (set: NonNullable<Turno["set"]>) => {
+      setTarjetas(set.tarjetas);
+      setAncla(set.ancla);
+      setAnclaLibre(false);
+      setViendoLista(false);
+      setMarcandoMas(false);
+      setAviso(null);
+      anotar("volver_set", { tarjetas: set.tarjetas.length });
+    },
+    [anotar],
   );
 
   /** "Esperar" en la burbuja de red lenta: el corte automático se desactiva. */
@@ -858,6 +892,7 @@ export function Pantalla({
       reintentar={fallo || estancado ? reintentar : undefined}
       estancado={estancado !== null}
       prellenar={prellenar}
+      onVolverSet={volverASet}
     />
   );
 

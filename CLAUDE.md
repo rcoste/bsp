@@ -720,6 +720,11 @@ La app se afina con un ciclo **probar → medir → comparar → cambiar**, al e
 - **Reporte**: `node scripts/reporte-puertas.mjs [días]`. Por puerta, por campaña × puerta y por semana: visitas → marcó → 20 animes → habló → **regresó a 7 días** (solo "maduros") → costo de AI. Enseña a propósito las dos columnas que se pueden contradecir (completar vs. regresar). Compara las dos puertas más grandes con una prueba z y **dice "todavía no concluyas" con menos de 100 visitas por lado**.
 - **Regla de la casa:** una comparación a la vez en la cima del embudo. Dos a la vez se contaminan.
 
+## Volver a sets anteriores y las dos direcciones (2026-10-26)
+
+- **Tira de miniaturas en el globo** (`Dock.tsx`): cada turno de Sen Pai que trajo tarjetas guarda su set en `Turno.set` (solo en el navegador; `historialParaLaAI` lo quita antes de mandar). Tocar la tira devuelve ese set a la vitrina con su ancla. Antes cada recomendación borraba la anterior para siempre. Evento `volver_set`.
+- **Las dos direcciones** (alcance §6, "cosa de fan de alta confianza"): cuando la persona dice que acabó una serie, los chips son "Más como esa" y "Sácame de ahí" + uno específico. Vive en `instrucciones.ts` y está ACOTADO a ese caso: la primera versión las proponía siempre, hasta para "parecido a Death Note". Verificado con tres peticiones distintas.
+
 ## La hoja de detalle existe (2026-10-26)
 
 Módulo 4 del alcance v1, tal cual: se abre ENCIMA (hoja al 85% en celular, panel a la derecha en escritorio) tocando la portada de una tarjeta, y trae solo **sinopsis sin spoilers en español, dónde verlo y la misma obra**. Nada de personajes, reseñas ni episodios. Marcar sigue en la tarjeta.
