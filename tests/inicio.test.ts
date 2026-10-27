@@ -2,7 +2,7 @@ import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { sql } from "../lib/db.ts";
-import { decidirInicio } from "../lib/inicio.ts";
+import { decidirInicio, esPuerta } from "../lib/inicio.ts";
 import { marcar } from "../lib/lista.ts";
 
 /**
@@ -87,5 +87,32 @@ describe("decidirInicio", () => {
     });
     assert.equal(i.modo, "arranque");
     assert.doesNotMatch(i.saludo, /recuerdo|antes|última vez/i);
+  });
+});
+
+describe("las puertas (?v=)", () => {
+  it("?v=parrilla enseña la parrilla aunque llegue de un anuncio", async () => {
+    const i = await decidirInicio({ dispositivoId: null, fria: true, vaAPreguntar: false, puerta: "parrilla" });
+    assert.equal(i.modo, "arranque");
+    assert.equal(i.animes.length, 24);
+  });
+
+  it("?v=parrilla12 es la misma parrilla, más corta", async () => {
+    const i = await decidirInicio({ dispositivoId: null, fria: true, vaAPreguntar: false, puerta: "parrilla12" });
+    assert.equal(i.modo, "arranque");
+    assert.equal(i.animes.length, 12);
+  });
+
+  it("?v=tarjetas da contenido aunque NO venga de campaña (un link por WhatsApp)", async () => {
+    const i = await decidirInicio({ dispositivoId: null, fria: false, vaAPreguntar: false, puerta: "tarjetas" });
+    assert.equal(i.modo, "reposo");
+    if (i.modo !== "reposo") return;
+    assert.equal(i.tarjetas.length, 6);
+  });
+
+  it("una puerta desconocida se ignora: nadie ve una pantalla rara", async () => {
+    const i = await decidirInicio({ dispositivoId: null, fria: false, vaAPreguntar: false, puerta: "inventada" });
+    assert.equal(i.modo, "arranque");
+    assert.equal(esPuerta("inventada"), false);
   });
 });

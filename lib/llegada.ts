@@ -120,3 +120,15 @@ export function leerOrigen(
     .map((p) => p.slice(0, 60).trim());
   return partes.length ? partes.join(" / ") : null;
 }
+
+/**
+ * La PUERTA por la que entró: `?v=parrilla`, `?v=tarjetas`… Cada anuncio
+ * manda a una puerta distinta y el reporte de puertas las compara de punta a
+ * punta. Lo que hace cada puerta vive en lib/inicio.ts (PUERTAS); aquí solo
+ * se valida la forma, para que una URL con basura no ensucie el reporte.
+ */
+export function leerPuerta(crudo: string | undefined | null): string | null {
+  if (typeof crudo !== "string") return null;
+  const v = crudo.trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9_-]{0,31}$/.test(v) ? v : null;
+}

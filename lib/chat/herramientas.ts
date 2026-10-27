@@ -2,6 +2,7 @@ import "server-only";
 import type Anthropic from "@anthropic-ai/sdk";
 import { ADULTOS, buscarPorTitulo, type Anime } from "../anime/catalogo.ts";
 import { sugerencias } from "../anime/buscar.ts";
+import { registrarEvento } from "../eventos-uso.ts";
 import {
   esCalificacion,
   esMarca,
@@ -258,6 +259,12 @@ export async function actualizarLista(
   const quedo = await marcar(dispositivoId, anime.id, estado as Marca, {
     episodio: typeof episodio === "number" ? episodio : null,
     calificacion: esCalificacion(calificacion) ? calificacion : null,
+  });
+  void registrarEvento(dispositivoId, "marca", {
+    animeId: anime.id,
+    marca: estado,
+    desde: "chat",
+    quedo: quedo !== null,
   });
 
   return {

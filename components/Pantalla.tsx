@@ -9,6 +9,8 @@ import { Obertura } from "./Obertura";
 import { VitrinaSeleccion } from "./Vitrina";
 import { VitrinaRecomendacion, type Tarjeta } from "./VitrinaRecomendacion";
 import { Dock } from "./Dock";
+import type { NombreEvento } from "@/lib/eventos-uso";
+import type { ViaMensaje } from "@/lib/chat/eventos";
 import { etiquetarEnClarity, identificarEnClarity } from "@/lib/clarity";
 
 /** Lo mismo que cuenta la conversión "20 animes" (lib/medicion.ts). */
@@ -40,6 +42,8 @@ export type Llegada = {
   gclid: string | null;
   gbraid: string | null;
   wbraid: string | null;
+  /** La puerta (?v=) por la que entró; la guarda /api/llegada. */
+  puerta: string | null;
 };
 
 export function Pantalla({
@@ -168,12 +172,24 @@ export function Pantalla({
 
   useEffect(() => detenerRevelado, [detenerRevelado]);
 
+  // --- La bitácora de uso -------------------------------------------------
+  // Solo lo que el servidor no ve por sí mismo (un chip, un deshacer, volver
+  // a la parrilla). Telemetría: si falla, nadie se entera y nada se rompe.
+  const anotar = useCallback((nombre: NombreEvento, datos: Record<string, string | number | boolean> = {}) => {
+    void fetch("/api/eventos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ eventos: [{ nombre, datos }] }),
+      keepalive: true,
+    }).catch(() => {});
+  }, []);
+
   // --- La conversación ----------------------------------------------------
-  const cola = useRef<string[]>([]);
+  const cola = useRef<{ texto: string; via: ViaMensaje }[]>([]);
   const ocupado = useRef(false);
 
   const hablar = useCallback(
-    async (texto: string, historial: Turno[]) => {
+    async (texto: string, historial: Turno[], via: ViaMensaje = "texto") => {
       ocupado.current = true;
       setPensando(true);
       setAncla(texto);
@@ -190,7 +206,7 @@ export function Pantalla({
         const respuesta = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mensaje: texto, historial }),
+          body: JSON.stringify({ mensaje: texto, historial, via }),
         });
 
         // El servidor avisa si contestó de mentira. Se dice en pantalla: si no,
@@ -248,14 +264,14 @@ export function Pantalla({
         setPensando(false);
         ocupado.current = false;
         const siguiente = cola.current.shift();
-        if (siguiente) void hablar(siguiente, hilo.current);
+        if (siguiente) void hablar(siguiente.texto, hilo.current, siguiente.via);
       }
     },
     [revelar],
   );
 
   const enviar = useCallback(
-    (texto: string) => {
+    (texto: string, via: ViaMensaje = "texto") => {
       if (mudo) return;
       const previos = hilo.current;
       const conElTuyo: Turno[] = [...previos, { de: "tu", texto }];
@@ -265,8 +281,8 @@ export function Pantalla({
       // El campo no se bloquea: si mandas un segundo mensaje se encola y sale
       // al terminar el turno. Encolar, no interrumpir — es lo que la gente ya
       // espera de WhatsApp.
-      if (ocupado.current) cola.current.push(texto);
-      else void hablar(texto, previos);
+      if (ocupado.current) cola.current.push({ texto, via });
+      else void hablar(texto, previos, via);
     },
     [hablar, mudo],
   );
@@ -324,7 +340,7 @@ export function Pantalla({
 
   /** Manda la marca al servidor y adopta la entrada que quedó de verdad. */
   const persistir = useCallback(
-    (animeId: number, marca: Marca, extras?: { calificacion?: Calificacion }) => {
+    (animeId: number, marca: Marca, extras?: { calificacion?: Calificacion; desde?: "parrilla" | "tarjeta" }) => {
       void fetch("/api/lista", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -390,7 +406,7 @@ export function Pantalla({
           return n;
         });
       }
-      persistir(anime.id, marca);
+      persistir(anime.id, marca, { desde: "tarjeta" });
     },
     [persistir],
   );
@@ -405,10 +421,11 @@ export function Pantalla({
     });
     // Volver a mandar "descartado" sobre lo ya descartado lo QUITA (el
     // interruptor del servidor).
-    persistir(deshacer.tarjeta.anime.id, "descartado");
+    persistir(deshacer.tarjeta.anime.id, "descartado", { desde: "tarjeta" });
+    anotar("deshacer", { animeId: deshacer.tarjeta.anime.id });
     setDeshacer(null);
     if (relojDeshacer.current) window.clearTimeout(relojDeshacer.current);
-  }, [deshacer, persistir]);
+  }, [deshacer, persistir, anotar]);
 
   const calificarAnime = useCallback(
     (anime: Anime, calificacion: Calificacion) => {
@@ -419,7 +436,7 @@ export function Pantalla({
         ...prev,
         [anime.id]: { ...(prev[anime.id] ?? { marca: estado, episodio: null }), marca: estado, calificacion },
       }));
-      persistir(anime.id, estado, { calificacion });
+      persistir(anime.id, estado, { calificacion, desde: "tarjeta" });
     },
     [marcas, persistir],
   );
@@ -443,6 +460,7 @@ export function Pantalla({
         gclid: llegada.gclid,
         gbraid: llegada.gbraid,
         wbraid: llegada.wbraid,
+        v: llegada.puerta,
       }),
     })
       .then((r) => r.json() as Promise<{ perfil?: string | null }>)
@@ -451,6 +469,7 @@ export function Pantalla({
         // campaña igual que en Binge Senpai.
         if (perfil) identificarEnClarity(perfil);
         etiquetarEnClarity("campana", llegada.campana ?? "sin campaña");
+        etiquetarEnClarity("puerta", llegada.puerta ?? "sin puerta");
         if (llegada.gclid || llegada.gbraid || llegada.wbraid) {
           etiquetarEnClarity("anuncio_google", "si");
         }
@@ -464,7 +483,7 @@ export function Pantalla({
     // tiramos lo único que sabíamos de él — y lo que se pagó por saber.
     if (llegada.preguntar && llegada.consulta) {
       yaArranco.current = true; // el arranque de gusto ya no dispara solo
-      enviar(llegada.consulta);
+      enviar(llegada.consulta, "llegada");
     }
     // Solo al montar: la llegada ocurre una vez.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -483,7 +502,7 @@ export function Pantalla({
     // marcas del arranque solo viajaban como texto a la AI y la biblioteca
     // quedaba vacía — justo el factor de retención desperdiciado.
     // (El fetch va fuera del updater; ver la nota de arriba.)
-    persistir(id, "visto");
+    persistir(id, "visto", { desde: "parrilla" });
   }
 
   // La reacción al tercer marcado vive aquí, fuera del updater.
@@ -496,7 +515,7 @@ export function Pantalla({
       .filter((a) => marcados.has(a.id))
       .map((a) => a.titulo)
       .join(", ");
-    enviar(`Ya vi ${titulos}. ¿Qué me recomiendas?`);
+    enviar(`Ya vi ${titulos}. ¿Qué me recomiendas?`, "arranque");
   }, [marcados, animes, enviar]);
 
   // La recomendación manda, PERO se puede volver a la parrilla a seguir
@@ -543,6 +562,7 @@ export function Pantalla({
         onSeguir: () => {
           setViendoLista(false);
           setMarcandoMas(true);
+          anotar("volver_parrilla");
         },
       }}
       esLista={viendoLista}

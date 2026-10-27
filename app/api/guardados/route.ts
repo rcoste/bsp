@@ -1,4 +1,5 @@
 import { registrarError } from "@/lib/db";
+import { registrarEvento } from "@/lib/eventos-uso";
 import { guardados } from "@/lib/lista";
 import { anotarActividad } from "@/lib/perfil";
 import { dispositivoDePeticion } from "@/lib/sesion";
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
     // Abrir sus guardados es usar la app (cuenta para "regresó"); la misma
     // lectura al cargar la portada no, por eso se anota aquí y no en guardados().
     await anotarActividad(dispositivoId);
+    void registrarEvento(dispositivoId, "guardados", { cuantos: lista.length });
     const respuesta = Response.json({ guardados: lista });
     if (cookie) respuesta.headers.set("Set-Cookie", cookie);
     return respuesta;

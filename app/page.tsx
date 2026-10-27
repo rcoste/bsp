@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { decidirInicio } from "@/lib/inicio";
-import { leerLlegada, leerOrigen } from "@/lib/llegada";
+import { leerLlegada, leerOrigen, leerPuerta } from "@/lib/llegada";
 import { marcasDe, type Entrada } from "@/lib/lista";
 import { NOMBRE_COOKIE, leerDispositivo } from "@/lib/sesion";
 import { Pantalla } from "@/components/Pantalla";
@@ -22,6 +22,8 @@ export default async function Home({
 
   const llegada = leerLlegada(unico(params.q));
   const origen = leerOrigen(unico(params.utm_source), unico(params.utm_campaign));
+  // La puerta: a qué versión de la primera pantalla apunta este anuncio.
+  const puerta = leerPuerta(unico(params.v));
 
   // Un componente de servidor no puede PONER la cookie, así que en la primera
   // visita no hay dispositivo todavía. Se crea en la primera llamada a
@@ -43,6 +45,7 @@ export default async function Home({
     // Llegó de un anuncio: no trae la confianza prestada de un amigo.
     fria: Boolean(origen) || Boolean(llegada.consulta),
     vaAPreguntar: llegada.vale,
+    puerta,
   });
 
   return (
@@ -66,6 +69,7 @@ export default async function Home({
         gclid: unico(params.gclid) ?? null,
         gbraid: unico(params.gbraid) ?? null,
         wbraid: unico(params.wbraid) ?? null,
+        puerta,
       }}
     />
   );

@@ -53,3 +53,8 @@ export async function* leerEventos(cuerpo: ReadableStream<Uint8Array>) {
     }
   }
 }
+
+/** Por dónde entró un mensaje al chat: tecleado, un chip, la búsqueda con la
+ *  que aterrizó, o el arranque de gusto (al tercer toque en la parrilla). */
+export type ViaMensaje = "texto" | "chip" | "llegada" | "arranque";
+export const VIAS_MENSAJE: readonly ViaMensaje[] = ["texto", "chip", "llegada", "arranque"];

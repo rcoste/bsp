@@ -1,4 +1,5 @@
 import { registrarError } from "@/lib/db";
+import { registrarEvento } from "@/lib/eventos-uso";
 import { esCalificacion, esMarca, marcar } from "@/lib/lista";
 import { dispositivoDePeticion } from "@/lib/sesion";
 
@@ -15,6 +16,7 @@ export async function POST(request: Request) {
     marca?: unknown;
     episodio?: unknown;
     calificacion?: unknown;
+    desde?: unknown;
   } | null;
 
   const animeId = Number(cuerpo?.animeId);
@@ -34,6 +36,14 @@ export async function POST(request: Request) {
     const quedo = await marcar(dispositivoId, animeId, cuerpo.marca, {
       episodio,
       calificacion,
+    });
+    // Para el reporte de puertas: desde dónde marcó (parrilla o tarjeta) y si
+    // la marca quedó o se quitó (tocar dos veces la quita).
+    void registrarEvento(dispositivoId, "marca", {
+      animeId,
+      marca: cuerpo.marca,
+      desde: cuerpo.desde === "parrilla" ? "parrilla" : "tarjeta",
+      quedo: quedo !== null,
     });
     const respuesta = Response.json({ entrada: quedo });
     if (cookie) respuesta.headers.set("Set-Cookie", cookie);

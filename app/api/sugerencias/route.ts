@@ -1,5 +1,7 @@
 import { sugerencias, tarjetaDeSugerencia } from "@/lib/anime/buscar";
 import { registrarError } from "@/lib/db";
+import { registrarEvento } from "@/lib/eventos-uso";
+import { dispositivoDePeticion } from "@/lib/sesion";
 
 /**
  * El autocompletado del campo del chat.
@@ -22,6 +24,10 @@ export async function GET(request: Request) {
     try {
       const anime = await tarjetaDeSugerencia(numero);
       if (!anime) return Response.json({ error: "no existe" }, { status: 404 });
+      // Buscar un título por su nombre es otra forma de usar la app; va a la
+      // bitácora. Sin cookie no hay a quién anotárselo y no se crea una.
+      const { id: dispositivoId, cookie } = dispositivoDePeticion(request.headers);
+      if (!cookie) void registrarEvento(dispositivoId, "sugerencia", { animeId: numero });
       return Response.json({ anime });
     } catch (error) {
       await registrarError("/api/sugerencias:id", error, { id: numero });

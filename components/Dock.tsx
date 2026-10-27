@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ViaMensaje } from "@/lib/chat/eventos";
 import { ArrowUp, Bookmark, X } from "lucide-react";
 import type { Turno } from "@/lib/chat/eventos";
 import type { Sugerencia } from "@/lib/anime/buscar";
@@ -23,7 +24,7 @@ type Props = {
   mensajes: Turno[];
   chips: string[];
   pensando: boolean;
-  onEnviar: (texto: string) => void;
+  onEnviar: (texto: string, via?: ViaMensaje) => void;
   /** Tocar una sugerencia del autocompletado: va directo a la vitrina. */
   onSugerencia: (id: number) => void;
   /** El chip "Mis guardados": llena la vitrina con la lista de la persona. */
@@ -204,7 +205,7 @@ export function Dock({
             <button
               key={c}
               type="button"
-              onClick={() => onEnviar(c)}
+              onClick={() => onEnviar(c, "chip")}
               disabled={deshabilitado}
               className="chip-tinta disabled:opacity-45"
             >

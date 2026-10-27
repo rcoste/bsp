@@ -1,4 +1,6 @@
 import { conversar, hayLlave, type Evento, type Turno } from "@/lib/chat/bucle";
+import { VIAS_MENSAJE, type ViaMensaje } from "@/lib/chat/eventos";
+import { registrarEvento } from "@/lib/eventos-uso";
 import { conversarDemo, enDemo } from "@/lib/chat/demo";
 import { registrarGasto } from "@/lib/chat/gasto";
 import { registrarError } from "@/lib/db";
@@ -34,9 +36,9 @@ function recortar(historial: Turno[]): Turno[] {
   return conservados;
 }
 
-function leerCuerpo(cuerpo: unknown): { mensaje: string; historial: Turno[] } | null {
+function leerCuerpo(cuerpo: unknown): { mensaje: string; historial: Turno[]; via: ViaMensaje } | null {
   if (typeof cuerpo !== "object" || cuerpo === null) return null;
-  const { mensaje, historial } = cuerpo as { mensaje?: unknown; historial?: unknown };
+  const { mensaje, historial, via } = cuerpo as { mensaje?: unknown; historial?: unknown; via?: unknown };
   if (typeof mensaje !== "string" || !mensaje.trim()) return null;
   if (mensaje.length > MAX_MENSAJE) return null;
 
@@ -51,7 +53,13 @@ function leerCuerpo(cuerpo: unknown): { mensaje: string; historial: Turno[] } | 
       )
     : [];
 
-  return { mensaje: mensaje.trim(), historial: recortar(turnos) };
+  return {
+    mensaje: mensaje.trim(),
+    historial: recortar(turnos),
+    // Por dónde entró el mensaje, para la bitácora. Lo dice el navegador y se
+    // confía: solo sirve para el reporte, nadie gana nada mintiendo aquí.
+    via: VIAS_MENSAJE.includes(via as ViaMensaje) ? (via as ViaMensaje) : "texto",
+  };
 }
 
 export async function POST(request: Request) {
@@ -125,6 +133,7 @@ export async function POST(request: Request) {
     await anotarActividad(dispositivoId).catch((error) =>
       registrarError("/api/chat:actividad", error, { dispositivoId }),
     );
+    void registrarEvento(dispositivoId, "mensaje", { via: cuerpo.via, largo: cuerpo.mensaje.length });
   }
 
   const codificador = new TextEncoder();

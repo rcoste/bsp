@@ -35,9 +35,37 @@ export type Inicio =
 
 const SALUDO_ARRANQUE = "Dime qué acabas de ver y te digo qué sigue, nakama.";
 
+/** El de la parrilla para quien llega de un anuncio: pide, pero explica. */
+const SALUDO_FRIO_PARRILLA =
+  "Toca las que ya viste — con tres me basta para decirte qué sigue.";
+
 /** El del que llega de un anuncio: explica el trato antes de pedir nada. */
 const SALUDO_FRIO =
   "Mira la vitrina — ahí va lo que la gente no suelta. Marca las que ya viste y te afino el gusto.";
+
+/**
+ * Las puertas: lo que ve quien llega con `?v=…`. Cada anuncio apunta a una, y
+ * `scripts/reporte-puertas.mjs` las compara de punta a punta (completan el
+ * flujo → regresan → a qué costo). Agregar una puerta es agregar una línea;
+ * una puerta desconocida se registra en el perfil pero se trata como si no
+ * viniera, para que el reporte la enseñe y nadie vea una pantalla rara.
+ *
+ * Solo aplican a la primera visita: quien vuelve con memoria ve su memoria.
+ */
+export const PUERTAS = {
+  /** La parrilla de "¿cuál de estos has visto?", 24 portadas. */
+  parrilla: { modo: "arranque", portadas: 24 },
+  /** La misma parrilla, más corta: ¿abruman 24 o ayudan? */
+  parrilla12: { modo: "arranque", portadas: 12 },
+  /** Seis tarjetas listas ("Para empezar") antes de pedir nada. */
+  tarjetas: { modo: "reposo", tarjetas: 6 },
+} as const satisfies Record<string, { modo: "arranque"; portadas: number } | { modo: "reposo"; tarjetas: number }>;
+
+export type Puerta = keyof typeof PUERTAS;
+
+export function esPuerta(valor: unknown): valor is Puerta {
+  return typeof valor === "string" && valor in PUERTAS;
+}
 
 export async function decidirInicio(opciones: {
   dispositivoId: string | null;
@@ -46,8 +74,11 @@ export async function decidirInicio(opciones: {
   /** Si ya se le va a disparar una conversación, la vitrina se llena con eso
    *  y aquí no hace falta poblarla. */
   vaAPreguntar: boolean;
+  /** La puerta pedida en la URL (`?v=`), ya validada en forma. */
+  puerta?: string | null;
 }): Promise<Inicio> {
-  const animes = await paraArranque(24);
+  const puerta = esPuerta(opciones.puerta) ? PUERTAS[opciones.puerta] : null;
+  const animes = await paraArranque(puerta?.modo === "arranque" ? puerta.portadas : 24);
 
   // Si la conversación arranca sola, sus tarjetas mandan: poblar la vitrina
   // ahora solo haría que parpadeara contenido que se va a reemplazar.
@@ -59,6 +90,20 @@ export async function decidirInicio(opciones: {
   if (opciones.dispositivoId) {
     const memoria = await recordar(opciones.dispositivoId).catch(() => null);
     if (memoria) return { ...memoria, animes };
+  }
+
+  // ─── La puerta pedida manda sobre la regla implícita de abajo ─────────────
+  if (puerta?.modo === "reposo") {
+    return {
+      modo: "reposo",
+      tarjetas: animes.slice(0, puerta.tarjetas).map((anime) => ({ anime, razon: "" })),
+      ancla: "Para empezar",
+      saludo: SALUDO_FRIO,
+      animes,
+    };
+  }
+  if (puerta?.modo === "arranque") {
+    return { modo: "arranque", animes, saludo: opciones.fria ? SALUDO_FRIO_PARRILLA : SALUDO_ARRANQUE };
   }
 
   // ─── ¿Llegó de un anuncio? Se le da antes de pedirle ──────────────────────

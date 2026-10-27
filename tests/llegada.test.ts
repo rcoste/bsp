@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { leerClic, leerLlegada, leerOrigen } from "../lib/llegada.ts";
+import { leerClic, leerLlegada, leerOrigen, leerPuerta } from "../lib/llegada.ts";
 
 /**
  * La clasificación de la búsqueda de aterrizaje decide si se gasta una
@@ -90,5 +90,21 @@ describe("leerClic", () => {
     assert.equal(leerClic({ gclid: "corto" }), null);
     assert.equal(leerClic({ gclid: "<script>alert(1)</script>" }), null);
     assert.equal(leerClic({ gclid: "a".repeat(201) }), null);
+  });
+});
+
+describe("leerPuerta", () => {
+  it("acepta una puerta con forma de puerta, en minúsculas", () => {
+    assert.equal(leerPuerta("parrilla"), "parrilla");
+    assert.equal(leerPuerta(" Tarjetas "), "tarjetas");
+    assert.equal(leerPuerta("parrilla12"), "parrilla12");
+  });
+
+  it("rechaza basura: nada de espacios, símbolos ni kilómetros de texto", () => {
+    assert.equal(leerPuerta("<script>"), null);
+    assert.equal(leerPuerta("dos palabras"), null);
+    assert.equal(leerPuerta("a".repeat(40)), null);
+    assert.equal(leerPuerta(""), null);
+    assert.equal(leerPuerta(undefined), null);
   });
 });

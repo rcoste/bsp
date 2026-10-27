@@ -1,5 +1,5 @@
 import { registrarError, sql } from "@/lib/db";
-import { leerClic, leerLlegada, leerOrigen } from "@/lib/llegada";
+import { leerClic, leerLlegada, leerOrigen, leerPuerta } from "@/lib/llegada";
 import { dispositivoDePeticion } from "@/lib/sesion";
 
 /**
@@ -21,6 +21,7 @@ export async function POST(request: Request) {
     gclid?: unknown;
     gbraid?: unknown;
     wbraid?: unknown;
+    v?: unknown;
   } | null;
 
   const { consulta } = leerLlegada(
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
     typeof cuerpo?.utm_campaign === "string" ? cuerpo.utm_campaign : null,
   );
   const clic = leerClic(cuerpo ?? {});
+  const puerta = leerPuerta(typeof cuerpo?.v === "string" ? cuerpo.v : null);
 
   const { id: dispositivoId, cookie } = dispositivoDePeticion(request.headers);
 
@@ -43,15 +45,16 @@ export async function POST(request: Request) {
     // regreso de las dos apuestas tiene que medirse igual (ver lib/perfil.ts,
     // anotarActividad).
     const [perfil] = await sql<{ id: string }[]>`
-      insert into perfiles (dispositivo_id, origen, consulta_llegada, gclid, gbraid, wbraid, clic_en)
+      insert into perfiles (dispositivo_id, origen, consulta_llegada, puerta, gclid, gbraid, wbraid, clic_en)
       values (
-        ${dispositivoId}, ${origen}, ${consulta || null},
+        ${dispositivoId}, ${origen}, ${consulta || null}, ${puerta},
         ${clic?.gclid ?? null}, ${clic?.gbraid ?? null}, ${clic?.wbraid ?? null},
         case when ${clic !== null}::boolean then now() end
       )
       on conflict (dispositivo_id) do update set
         origen = coalesce(perfiles.origen, excluded.origen),
         consulta_llegada = coalesce(perfiles.consulta_llegada, excluded.consulta_llegada),
+        puerta = coalesce(perfiles.puerta, excluded.puerta),
         gclid = case when perfiles.clic_en is null then excluded.gclid else perfiles.gclid end,
         gbraid = case when perfiles.clic_en is null then excluded.gbraid else perfiles.gbraid end,
         wbraid = case when perfiles.clic_en is null then excluded.wbraid else perfiles.wbraid end,
