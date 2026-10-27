@@ -116,3 +116,15 @@ describe("las puertas (?v=)", () => {
     assert.equal(esPuerta("inventada"), false);
   });
 });
+
+describe("la primera pantalla no apuesta la primera impresión", () => {
+  it("ni la parrilla ni las tarjetas de llegada traen r_x ni r_plus", async () => {
+    for (const puerta of ["parrilla", "tarjetas"]) {
+      const i = await decidirInicio({ dispositivoId: null, fria: true, vaAPreguntar: false, puerta });
+      const animes = i.modo === "reposo" ? [...i.tarjetas.map((t) => t.anime), ...i.animes] : i.animes;
+      for (const a of animes) {
+        assert.ok(a.clasificacion !== "r_x" && a.clasificacion !== "r_plus", `${a.titulo} (${a.clasificacion}) en ${puerta}`);
+      }
+    }
+  });
+});

@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "../db.ts";
-import { ADULTOS, datosDeTarjeta, type Anime } from "./catalogo.ts";
+import { FUERA_DE_PRIMERA_PANTALLA, datosDeTarjeta, type Anime } from "./catalogo.ts";
 
 /**
  * Los animes del arranque de gusto: portadas que el usuario toca para decir
@@ -27,7 +27,7 @@ export async function paraArranque(limite = 12): Promise<Anime[]> {
   // puestos 40 a 400 — populares de verdad, pero no de los que todo el mundo
   // ha visto. Se barajan en cada visita para que la parrilla no sea siempre
   // la misma.
-  // "aptos" deja fuera el contenido para adultos y se queda con UN título por
+  // "aptos" deja fuera adultos y desnudez leve, y se queda con UN título por
   // obra (el más visto: la primera temporada, casi siempre). Sin lo segundo,
   // una serie famosa ocupa tres portadas con sus temporadas y la parrilla
   // aprende menos de cada toque.
@@ -39,7 +39,7 @@ export async function paraArranque(limite = 12): Promise<Anime[]> {
        where expira_en > now()
          and datos->>'portada' is not null
          and datos->>'tipo' = any(${TIPOS})
-         and coalesce(datos->>'clasificacion', '') <> ${ADULTOS}
+         and coalesce(datos->>'clasificacion', '') <> all(${FUERA_DE_PRIMERA_PANTALLA})
        order by coalesce(datos->>'serie', anime_id::text), (datos->>'miembros')::bigint desc
     )
     (

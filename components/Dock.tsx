@@ -16,6 +16,11 @@ import { Escribiendo, Globo } from "./Globo";
  * toda la pantalla, que es donde vive el producto. Ver DESIGN.md → Dock móvil.
  */
 
+/** Lo que deja escrito cada chip de "completa la frase". */
+const PREFIJOS: Record<string, string> = {
+  "Acabé una serie…": "Acabé ",
+};
+
 type Props = {
   /** En escritorio el hilo vive siempre visible en la columna izquierda; no
    *  hay dock ni hoja. Ver DESIGN.md → "el chat es tinta, la vitrina papel:
@@ -56,6 +61,7 @@ export function Dock({
   const [texto, setTexto] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [sugeridos, setSugeridos] = useState<Sugerencia[]>([]);
+  const campoRef = useRef<HTMLTextAreaElement>(null);
   const finRef = useRef<HTMLDivElement>(null);
   const hiloRef = useRef<HTMLDivElement>(null);
 
@@ -205,7 +211,7 @@ export function Dock({
             <button
               key={c}
               type="button"
-              onClick={() => onEnviar(c, "chip")}
+              onClick={() => (c.endsWith("…") ? prellenar(c) : onEnviar(c, "chip"))}
               disabled={deshabilitado}
               className="chip-tinta disabled:opacity-45"
             >
@@ -229,6 +235,7 @@ export function Dock({
           Escribe tu mensaje
         </label>
         <textarea
+          ref={campoRef}
           id="mensaje"
           data-clarity-mask="True"
           value={texto}
@@ -270,6 +277,14 @@ export function Dock({
       </div>
     </>
   );
+
+  // Un chip que termina en "…" no manda nada: deja la frase empezada en el
+  // campo para que la persona la complete con el título. "Acabé una serie" a
+  // secas gastaba un turno (y un centavo) en que Sen Pai preguntara cuál.
+  function prellenar(chip: string) {
+    setTexto(PREFIJOS[chip] ?? `${chip.slice(0, -1)} `);
+    campoRef.current?.focus();
+  }
 
   function enviar() {
     const limpio = texto.trim();

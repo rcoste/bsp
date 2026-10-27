@@ -49,8 +49,16 @@ export type Anime = {
 
 export type Clasificacion = "g" | "pg" | "pg_13" | "r" | "r_plus" | "r_x";
 
-/** La única clasificación que la app no recomienda ni muestra en la parrilla. */
+/** La única clasificación que la app no recomienda nunca. */
 export const ADULTOS: Clasificacion = "r_x";
+
+/**
+ * Lo que tampoco va en la PRIMERA pantalla (parrilla y tarjetas de llegada):
+ * además del hentai, lo de desnudez leve (r_plus). Es la primera impresión de
+ * quien llega de un anuncio y no hay por qué apostarla; en las recomendaciones
+ * del chat r_plus sí puede salir si el gusto de la persona va por ahí.
+ */
+export const FUERA_DE_PRIMERA_PANTALLA: readonly Clasificacion[] = ["r_x", "r_plus"];
 
 /**
  * Jikan entrega la clasificación como frase ("Rx - Hentai", "R+ - Mild

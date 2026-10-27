@@ -17,7 +17,7 @@ import { etiquetarEnClarity, identificarEnClarity } from "@/lib/clarity";
 const META_VEINTE = 20;
 
 const CHIPS_INICIALES = [
-  "Acabé una serie",
+  "Acabé una serie…", // con "…": prellena el campo en vez de mandar (ver Dock)
   "Algo corto para el finde",
   "Sorpréndeme",
 ];
