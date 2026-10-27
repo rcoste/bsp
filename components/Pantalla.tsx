@@ -304,12 +304,21 @@ export function Pantalla({
         if (relojEstancado !== null) window.clearTimeout(relojEstancado);
         relojEstancado = window.setTimeout(() => cortar("estancado"), ESTANCADO_MS);
       };
-      const senal = () => {
+      // El reloj de "se cortó" solo corre una vez que empezó el TEXTO. Entre la
+      // última portada y la primera palabra el modelo sigue trabajando
+      // (verifica títulos, piensa, propone chips) y ese silencio llegó a 15 s
+      // en una respuesta sana: con el reloj armado desde la portada, la
+      // persona veía "Se cortó · Reintentar" y la respuesta buena se tiraba.
+      // Ese tramo tiene su propio límite, el mismo de 30 s del corte sin señal.
+      const senal = (deTexto: boolean) => {
         if (!hubeSenal) {
           hubeSenal = true;
           setEspera(null);
         }
-        latir();
+        if (deTexto || abrioBurbuja) latir();
+        else if (relojEstancado === null) {
+          relojEstancado = window.setTimeout(() => cortar("estancado"), SIN_SENAL_CORTE_MS);
+        }
       };
       const pararRelojes = () => {
         window.clearTimeout(avisoTardando);
@@ -359,7 +368,7 @@ export function Pantalla({
 
         for await (const evento of leerEventos(respuesta.body)) {
           if (evento.tipo === "tarjeta") {
-            senal();
+            senal(false);
             if (primeraTarjeta) ponerAncla();
             // Las viejas solo se van cuando llega la primera nueva: vaciar la
             // vitrina antes castigaría al usuario si esta vuelta no trae nada.
@@ -373,7 +382,7 @@ export function Pantalla({
             primeraTarjeta = false;
             setDelTurno.push({ anime: evento.anime, razon: evento.razon });
           } else if (evento.tipo === "texto") {
-            senal();
+            senal(true);
             if (!abrioBurbuja) {
               abrioBurbuja = true;
               setMensajes((m) => [...m, { de: "ai", texto: "" }]);
