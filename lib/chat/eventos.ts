@@ -17,7 +17,9 @@ export type Evento =
   | { tipo: "fin" }
   | { tipo: "error"; mensaje: string };
 
-export type Turno = { de: "ai" | "tu"; texto: string };
+/** `nota`: un aviso de la app en el hilo (un fallo, un tope) que se ve como
+ *  globo de Sen Pai pero NO viaja a la AI como historial. */
+export type Turno = { de: "ai" | "tu"; texto: string; nota?: boolean };
 
 /**
  * Lee el flujo de eventos con nombre que manda el servidor.

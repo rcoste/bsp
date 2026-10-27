@@ -98,10 +98,14 @@ export async function POST(request: Request) {
 
   // En demo no se cobran mensajes: nada cuesta, y gastar los 20 del día
   // jugando con respuestas de mentira sería absurdo.
+  let quedan: number | null = null;
   try {
     const veredicto = demo
       ? ({ permitido: true, usados: 0 } as const)
       : await cobrarMensaje(dispositivoId, direccionReal(request.headers));
+    // Para que la pantalla avise ANTES del tope (§3.8): el 21 se siente trampa
+    // si el 17 no dijo nada.
+    if (veredicto.permitido && !demo) quedan = Math.max(0, TOPE_DISPOSITIVO - veredicto.usados);
     if (!veredicto.permitido) {
       return Response.json(
         {
@@ -192,6 +196,7 @@ export async function POST(request: Request) {
     Connection: "keep-alive",
   });
   if (demo) cabeceras.set("X-BSP-Demo", "1");
+  if (quedan !== null) cabeceras.set("X-BSP-Quedan", String(quedan));
   if (ponerCookie) cabeceras.append("Set-Cookie", ponerCookie);
 
   return new Response(flujo, { headers: cabeceras });

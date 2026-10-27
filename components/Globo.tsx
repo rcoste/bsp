@@ -53,13 +53,38 @@ export function Globo({ turno, conEtiqueta = true }: { turno: Turno; conEtiqueta
   );
 }
 
-/** Los tres cuadros que parpadean mientras Sen Pai piensa. */
-export function Escribiendo() {
+/**
+ * Los tres cuadros que parpadean mientras Sen Pai piensa. Con red lenta
+ * (§3.3) la burbuja dice que está tardando y ofrece Esperar / Cancelar; si la
+ * persona ya tocó Esperar, solo queda Cancelar a su disposición.
+ */
+export function Escribiendo({
+  espera = null,
+  onEsperar,
+  onCancelar,
+}: {
+  espera?: null | "tardando" | "esperando";
+  onEsperar?: () => void;
+  onCancelar?: () => void;
+}) {
   return (
     <div className="flex flex-col items-start">
       <span className="kicker mb-[5px]" style={{ color: "var(--c-accent-400)" }}>
         Sen Pai
       </span>
+      {espera && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-[13px]" style={{ color: "var(--c-on-ink)" }}>
+          <span>{espera === "tardando" ? "Está tardando más de lo normal." : "Sigo esperando."}</span>
+          {espera === "tardando" && (
+            <button type="button" onClick={onEsperar} className="chip-tinta min-h-[44px]">
+              Esperar
+            </button>
+          )}
+          <button type="button" onClick={onCancelar} className="chip-tinta min-h-[44px]">
+            Cancelar
+          </button>
+        </div>
+      )}
       <p className="flex items-center gap-[5px] py-1" role="status">
         <span className="sr-only">Pensando</span>
         {[0, 0.15, 0.3].map((retraso) => (

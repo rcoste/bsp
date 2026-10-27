@@ -39,6 +39,15 @@ type Props = {
   cuantosGuardados: number;
   deshabilitado?: boolean;
   aviso?: string;
+  /** Red lenta (§3.3): la burbuja de espera cambia y ofrece Esperar/Cancelar. */
+  espera?: null | "tardando" | "esperando";
+  onEsperar?: () => void;
+  onCancelar?: () => void;
+  /** Hay algo que reintentar: un fallo (§3.4) o una respuesta a medias. */
+  reintentar?: () => void;
+  estancado?: boolean;
+  /** Texto que la app devuelve al campo (tras cancelar o fallar). */
+  prellenar?: { texto: string; clave: number } | null;
 };
 
 /** Lo que se espera a que dejes de teclear antes de preguntarle a la base. */
@@ -57,11 +66,25 @@ export function Dock({
   cuantosGuardados,
   deshabilitado,
   aviso,
+  espera = null,
+  onEsperar,
+  onCancelar,
+  reintentar,
+  estancado,
+  prellenar,
 }: Props) {
   const [texto, setTexto] = useState("");
   const [abierto, setAbierto] = useState(false);
   const [sugeridos, setSugeridos] = useState<Sugerencia[]>([]);
   const campoRef = useRef<HTMLTextAreaElement>(null);
+
+  // Lo que la app devuelve al campo. `clave` cambia en cada devolución para
+  // que el mismo texto dos veces también entre.
+  useEffect(() => {
+    if (!prellenar) return;
+    setTexto(prellenar.texto);
+    if (prellenar.texto) campoRef.current?.focus();
+  }, [prellenar]);
   const finRef = useRef<HTMLDivElement>(null);
   const hiloRef = useRef<HTMLDivElement>(null);
 
@@ -211,7 +234,7 @@ export function Dock({
             <button
               key={c}
               type="button"
-              onClick={() => (c.endsWith("…") ? prellenar(c) : onEnviar(c, "chip"))}
+              onClick={() => (c.endsWith("…") ? completarFrase(c) : onEnviar(c, "chip"))}
               disabled={deshabilitado}
               className="chip-tinta disabled:opacity-45"
             >
@@ -281,7 +304,7 @@ export function Dock({
   // Un chip que termina en "…" no manda nada: deja la frase empezada en el
   // campo para que la persona la complete con el título. "Acabé una serie" a
   // secas gastaba un turno (y un centavo) en que Sen Pai preguntara cuál.
-  function prellenar(chip: string) {
+  function completarFrase(chip: string) {
     setTexto(PREFIJOS[chip] ?? `${chip.slice(0, -1)} `);
     campoRef.current?.focus();
   }
@@ -354,7 +377,20 @@ export function Dock({
           ))}
           {pensando && (
             <li>
-              <Escribiendo />
+              <Escribiendo espera={espera} onEsperar={onEsperar} onCancelar={onCancelar} />
+            </li>
+          )}
+          {reintentar && !pensando && (
+            <li className="flex items-center gap-3 text-[13px]" style={{ color: "var(--c-on-ink-border)" }}>
+              {estancado && <span>Se cortó a media respuesta ·</span>}
+              <button
+                type="button"
+                onClick={reintentar}
+                className="chip-tinta min-h-[44px]"
+                style={{ borderColor: "var(--c-accent)" }}
+              >
+                Reintentar
+              </button>
             </li>
           )}
         </ul>

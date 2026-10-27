@@ -16,6 +16,19 @@ import { etiquetarEnClarity, identificarEnClarity } from "@/lib/clarity";
 /** Lo mismo que cuenta la conversión "20 animes" (lib/medicion.ts). */
 const META_VEINTE = 20;
 
+/** Relojes de red lenta (§3.3). Se miden hasta la PRIMERA SEÑAL —la primera
+ *  portada o la primera palabra—, nunca hasta el final: una respuesta larga que
+ *  lleva 25 s escribiéndose bien está funcionando y no se toca. */
+const SIN_SENAL_AVISO_MS = 12_000;
+const SIN_SENAL_CORTE_MS = 30_000;
+/** Si el texto empezó y pasan estos ms sin una palabra nueva, se da por muerto. */
+const ESTANCADO_MS = 10_000;
+/** Con estos mensajes por delante se avisa que se acerca el tope (§3.8). */
+const AVISO_QUEDAN = 3;
+
+/** El historial que viaja a la AI: sin las notas de la app (fallos, topes). */
+const historialParaLaAI = (m: Turno[]) => m.filter((t) => !t.nota);
+
 const CHIPS_INICIALES = [
   "Acabé una serie…", // con "…": prellena el campo en vez de mandar (ver Dock)
   "Algo corto para el finde",
@@ -90,6 +103,22 @@ export function Pantalla({
   const [aviso, setAviso] = useState<string | null>(null);
   const [mudo, setMudo] = useState(false);
   const [demo, setDemo] = useState(false);
+  // --- Los estados feos (docs/designs/experiencia-y-estados.md §3.3–3.9) ---
+  // Red lenta: la burbuja de espera cambia a los 12 s sin señal y ofrece
+  // Esperar / Cancelar; a los 30 s se corta sola salvo que hayan tocado Esperar.
+  const [espera, setEspera] = useState<null | "tardando" | "esperando">(null);
+  // La AI falló: Reintentar, y el texto de la persona vuelve al campo.
+  const [fallo, setFallo] = useState<{ texto: string; via: ViaMensaje } | null>(null);
+  // El texto empezó y se quedó a medias: lo parcial se queda, con Reintentar.
+  const [estancado, setEstancado] = useState<{ texto: string; via: ViaMensaje; historial: Turno[] } | null>(null);
+  // Lo que hay que devolverle al campo (tras cancelar o fallar).
+  const [prellenar, setPrellenar] = useState<{ texto: string; clave: number } | null>(null);
+  // Sin internet: aviso fijo, el chat se apaga, la vitrina sigue; al volver,
+  // la persona decide si manda — nunca se manda solo.
+  const [conexion, setConexion] = useState<"ok" | "sin" | "volvio">("ok");
+  const controlador = useRef<AbortController | null>(null);
+  const esperarMas = useRef(false);
+  const motivoCorte = useRef<"cancelar" | "tiempo" | "estancado" | null>(null);
   const [saltado, setSaltado] = useState(false);
 
   // El celular es el caso principal; escritorio es la variante. Un solo punto
@@ -102,6 +131,24 @@ export function Pantalla({
     mq.addEventListener("change", medir);
     return () => mq.removeEventListener("change", medir);
   }, []);
+
+  // --- Sin internet (§3.7) ------------------------------------------------
+  useEffect(() => {
+    const sin = () => setConexion("sin");
+    const volvio = () => setConexion((c) => (c === "sin" ? "volvio" : c));
+    if (!navigator.onLine) sin();
+    window.addEventListener("offline", sin);
+    window.addEventListener("online", volvio);
+    return () => {
+      window.removeEventListener("offline", sin);
+      window.removeEventListener("online", volvio);
+    };
+  }, []);
+  useEffect(() => {
+    if (conexion !== "volvio") return;
+    const t = window.setTimeout(() => setConexion("ok"), 6000);
+    return () => window.clearTimeout(t);
+  }, [conexion]);
 
   // El hilo al día, fuera del estado. Existe para NO tener que meter la
   // llamada al servidor dentro de un updater de useState: React ejecuta los
@@ -188,10 +235,23 @@ export function Pantalla({
   const cola = useRef<{ texto: string; via: ViaMensaje }[]>([]);
   const ocupado = useRef(false);
 
+  /** Quita la burbuja de la persona si es la última: su texto vuelve al campo. */
+  const quitarUltimoTuyo = useCallback(() => {
+    setMensajes((m) => {
+      const i = m.length - 1;
+      return i >= 0 && m[i].de === "tu" ? m.slice(0, i) : m;
+    });
+  }, []);
+
   const hablar = useCallback(
     async (texto: string, historial: Turno[], via: ViaMensaje = "texto") => {
       ocupado.current = true;
       setPensando(true);
+      setEspera(null);
+      setFallo(null);
+      setEstancado(null);
+      esperarMas.current = false;
+      motivoCorte.current = null;
       setAncla(texto);
       setAnclaLibre(false); // ya no es el reposo: es lo que pidió
       setAviso(null);
@@ -201,34 +261,85 @@ export function Pantalla({
 
       let primeraTarjeta = true;
       let abrioBurbuja = false;
+      let hubeSenal = false;
+
+      const control = new AbortController();
+      controlador.current = control;
+      const cortar = (motivo: "cancelar" | "tiempo" | "estancado") => {
+        if (control.signal.aborted) return;
+        motivoCorte.current = motivo;
+        control.abort();
+      };
+
+      // Los relojes de §3.3.
+      const avisoTardando = window.setTimeout(() => {
+        if (!hubeSenal) setEspera("tardando");
+      }, SIN_SENAL_AVISO_MS);
+      const corteSinSenal = window.setTimeout(() => {
+        // Si tocó "Esperar" ya decidió: el corte automático se desactiva.
+        if (!hubeSenal && !esperarMas.current) cortar("tiempo");
+      }, SIN_SENAL_CORTE_MS);
+      let relojEstancado: number | null = null;
+      const latir = () => {
+        if (relojEstancado !== null) window.clearTimeout(relojEstancado);
+        relojEstancado = window.setTimeout(() => cortar("estancado"), ESTANCADO_MS);
+      };
+      const senal = () => {
+        if (!hubeSenal) {
+          hubeSenal = true;
+          setEspera(null);
+        }
+        latir();
+      };
+      const pararRelojes = () => {
+        window.clearTimeout(avisoTardando);
+        window.clearTimeout(corteSinSenal);
+        if (relojEstancado !== null) window.clearTimeout(relojEstancado);
+      };
 
       try {
         const respuesta = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ mensaje: texto, historial, via }),
+          signal: control.signal,
         });
 
         // El servidor avisa si contestó de mentira. Se dice en pantalla: si no,
         // se juzgaría la calidad de unas recomendaciones inventadas.
         if (respuesta.headers.get("X-BSP-Demo") === "1") setDemo(true);
+        const quedan = Number(respuesta.headers.get("X-BSP-Quedan") ?? NaN);
 
         if (!respuesta.ok || !respuesta.body) {
           const datos = await respuesta.json().catch(() => null);
           if (datos?.error === "falta_llave") {
-            setAviso(
-              "Todavía no tengo el cerebro conectado. Falta la llave de Claude.",
-            );
+            setAviso("Todavía no tengo el cerebro conectado. Falta la llave de Claude.");
             setMudo(true);
-          } else {
-            setAviso(datos?.mensaje ?? "Se me trabó el cerebro tantito.");
-            if (respuesta.status === 429) setMudo(true);
+            return;
           }
-          return;
+          if (respuesta.status === 429) {
+            // §3.8 / §3.9: se acaba la conversación, no el producto. La vitrina
+            // y la lista siguen; el campo y los chips se apagan juntos.
+            setMensajes((m) => [
+              ...m,
+              {
+                de: "ai",
+                nota: true,
+                texto:
+                  datos?.error === "tope_mensajes"
+                    ? "Llegaste a los 20 mensajes de hoy. Mañana se reinician; tu lista y la vitrina siguen aquí."
+                    : "Estamos recibiendo muchísima gente hoy. Vuelve mañana: tu lista y la vitrina siguen aquí.",
+              },
+            ]);
+            setMudo(true);
+            return;
+          }
+          throw new Error(datos?.mensaje ?? "falló");
         }
 
         for await (const evento of leerEventos(respuesta.body)) {
           if (evento.tipo === "tarjeta") {
+            senal();
             // Las viejas solo se van cuando llega la primera nueva: vaciar la
             // vitrina antes castigaría al usuario si esta vuelta no trae nada.
             setTarjetas((previas) =>
@@ -238,6 +349,7 @@ export function Pantalla({
             );
             primeraTarjeta = false;
           } else if (evento.tipo === "texto") {
+            senal();
             if (!abrioBurbuja) {
               abrioBurbuja = true;
               setMensajes((m) => [...m, { de: "ai", texto: "" }]);
@@ -255,20 +367,90 @@ export function Pantalla({
               return n;
             });
           } else if (evento.tipo === "error") {
-            setAviso(evento.mensaje);
+            throw new Error(evento.mensaje);
+          } else if (evento.tipo === "fin") {
+            if (relojEstancado !== null) window.clearTimeout(relojEstancado);
           }
         }
+
+        // §3.8: el aviso ANTES del tope, con voz suave y en el hilo.
+        if (quedan === AVISO_QUEDAN) {
+          setMensajes((m) => [
+            ...m,
+            { de: "ai", nota: true, texto: `Te quedan ${AVISO_QUEDAN} mensajes por hoy; mañana se reinician.` },
+          ]);
+        }
       } catch {
-        setAviso("Se cortó la conexión. ¿Lo intentamos otra vez?");
+        const motivo = motivoCorte.current;
+        if (motivo === "cancelar") {
+          // La persona decidió; no falló nada. Sin disculpa: su texto vuelve al
+          // campo, su burbuja se va, la vitrina queda como estaba.
+          quitarUltimoTuyo();
+          setPrellenar({ texto, clave: Date.now() });
+        } else if (motivo === "estancado" || abrioBurbuja || !primeraTarjeta) {
+          // Empezó y se murió a medias. Lo parcial SE QUEDA (borrarlo se
+          // sentiría como que la app se comió lo que ya dijo) y abajo va
+          // "Se cortó a media respuesta · Reintentar".
+          setEstancado({ texto, via, historial });
+        } else {
+          // §3.4: falló o se cortó a los 30 s. Voz humana, Reintentar, y el
+          // texto de la persona de vuelta al campo listo para reenviar.
+          quitarUltimoTuyo();
+          setPrellenar({ texto, clave: Date.now() });
+          setFallo({ texto, via });
+          setMensajes((m) => [
+            ...m,
+            { de: "ai", nota: true, texto: "Se me trabó el cerebro tantito. ¿Lo intentamos otra vez?" },
+          ]);
+        }
       } finally {
+        pararRelojes();
+        controlador.current = null;
+        setEspera(null);
         setPensando(false);
         ocupado.current = false;
         const siguiente = cola.current.shift();
-        if (siguiente) void hablar(siguiente.texto, hilo.current, siguiente.via);
+        if (siguiente) void hablar(siguiente.texto, historialParaLaAI(hilo.current), siguiente.via);
       }
     },
-    [revelar],
+    [revelar, quitarUltimoTuyo],
   );
+
+  /** "Esperar" en la burbuja de red lenta: el corte automático se desactiva. */
+  const esperar = useCallback(() => {
+    esperarMas.current = true;
+    setEspera("esperando");
+  }, []);
+
+  /** "Cancelar": corta sin tratarlo como error. */
+  const cancelar = useCallback(() => {
+    motivoCorte.current = "cancelar";
+    controlador.current?.abort();
+  }, []);
+
+  /** "Reintentar", tanto tras un fallo como tras quedarse a medias. */
+  const reintentar = useCallback(() => {
+    if (fallo) {
+      const { texto, via } = fallo;
+      setFallo(null);
+      setPrellenar({ texto: "", clave: Date.now() });
+      // Se va la nota del fallo y la persona vuelve a mandar su mensaje.
+      setMensajes((m) => (m[m.length - 1]?.nota ? m.slice(0, -1) : m));
+      const visibles = hilo.current.filter((t) => !t.nota);
+      const conElTuyo: Turno[] = [...visibles, { de: "tu", texto }];
+      hilo.current = conElTuyo;
+      setMensajes(conElTuyo);
+      void hablar(texto, historialParaLaAI(visibles), via);
+      return;
+    }
+    if (estancado) {
+      const { texto, via, historial } = estancado;
+      setEstancado(null);
+      // La respuesta parcial se sustituye por una completa.
+      setMensajes((m) => (m[m.length - 1]?.de === "ai" ? m.slice(0, -1) : m));
+      void hablar(texto, historial, via);
+    }
+  }, [fallo, estancado, hablar]);
 
   const enviar = useCallback(
     (texto: string, via: ViaMensaje = "texto") => {
@@ -282,7 +464,7 @@ export function Pantalla({
       // al terminar el turno. Encolar, no interrumpir — es lo que la gente ya
       // espera de WhatsApp.
       if (ocupado.current) cola.current.push({ texto, via });
-      else void hablar(texto, previos, via);
+      else void hablar(texto, historialParaLaAI(previos), via);
     },
     [hablar, mudo],
   );
@@ -593,6 +775,21 @@ export function Pantalla({
       !llegada?.origen &&
       !llegada?.campana);
 
+  // Aviso fijo arriba. Lo que ya viste sigue aquí; solo el chat se apaga.
+  const avisoRed = conexion !== "ok" && (
+    <p
+      role="status"
+      className="kicker fixed left-0 right-0 z-50 px-4 py-[8px] text-center"
+      style={{
+        top: 0,
+        background: conexion === "sin" ? "var(--c-accent)" : "var(--c-ink)",
+        color: "var(--c-paper)",
+      }}
+    >
+      {conexion === "sin" ? "Sin conexión. Lo que ya viste sigue aquí." : "Volvió la conexión."}
+    </p>
+  );
+
   const avisoDeshacer = deshacer && (
     <div
       className="fixed left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 px-4 py-[10px]"
@@ -638,8 +835,16 @@ export function Pantalla({
       onSugerencia={verSugerencia}
       onGuardados={verGuardados}
       cuantosGuardados={cuantosGuardados}
-      deshabilitado={mudo}
+      // Los chips comparten estado con el campo: sin internet, tope de
+      // mensajes o tope de gasto, se apagan todos juntos.
+      deshabilitado={mudo || conexion === "sin"}
       aviso={aviso ?? undefined}
+      espera={espera}
+      onEsperar={esperar}
+      onCancelar={cancelar}
+      reintentar={fallo || estancado ? reintentar : undefined}
+      estancado={estancado !== null}
+      prellenar={prellenar}
     />
   );
 
@@ -653,7 +858,9 @@ export function Pantalla({
         style={{ background: "var(--c-paper)" }}
       >
         {conObertura && <Obertura />}
-        {avisoDeshacer}
+        {avisoRed}
+        {avisoRed}
+      {avisoDeshacer}
         {chat}
         <div className="flex min-w-0 flex-1 flex-col">
           <header

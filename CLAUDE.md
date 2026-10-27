@@ -720,6 +720,15 @@ La app se afina con un ciclo **probar → medir → comparar → cambiar**, al e
 - **Reporte**: `node scripts/reporte-puertas.mjs [días]`. Por puerta, por campaña × puerta y por semana: visitas → marcó → 20 animes → habló → **regresó a 7 días** (solo "maduros") → costo de AI. Enseña a propósito las dos columnas que se pueden contradecir (completar vs. regresar). Compara las dos puertas más grandes con una prueba z y **dice "todavía no concluyas" con menos de 100 visitas por lado**.
 - **Regla de la casa:** una comparación a la vez en la cima del embudo. Dos a la vez se contaminan.
 
+## Los estados feos ya existen (2026-10-26)
+
+Implementados según `docs/designs/experiencia-y-estados.md` §3.3–3.9, en `components/Pantalla.tsx` (`hablar`) y `Dock.tsx`/`Globo.tsx`:
+- **Red lenta (§3.3):** relojes medidos hasta la PRIMERA SEÑAL (portada o palabra). A los 12 s: "Está tardando más de lo normal" con Esperar/Cancelar; a los 30 s se corta solo salvo que hayan tocado Esperar. Cancelar no es error: la burbuja de la persona se va y su texto vuelve al campo. Texto estancado 10 s: lo parcial se queda + "Se cortó a media respuesta · Reintentar".
+- **La AI falla (§3.4):** nota en el hilo con voz humana + Reintentar; el texto vuelve al campo.
+- **Sin internet (§3.7):** aviso fijo, campo y chips apagados juntos, la vitrina sigue; al volver, "Volvió la conexión" y la persona decide — nunca se manda solo.
+- **Topes (§3.8/3.9):** el servidor manda `X-BSP-Quedan`; a 3 mensajes del tope, aviso suave en el hilo; al tope, nota en el hilo y se apaga la conversación, no el producto. **Desviación del documento:** sin cuenta por correo todavía, el tope no ofrece "guardar con correo" — dice que mañana se reinicia.
+- Las notas de la app en el hilo llevan `nota: true` en `Turno` y **no viajan a la AI** (`historialParaLaAI`).
+
 ## El motor de recomendación vive con Pablo (decisión 2026-10-26)
 
 Para que la prueba "México en inglés vs. México en español" mida SOLO el idioma, **BSP no construye motor propio**: usa el de Binge Senpai (candidatos ordenados por Jev + Match % + votos MAL + rasgos; 61% de aciertos contra 32% del método anterior). Pablo expone un endpoint sin estado (`POST /api/recs`: ids vistos/dejados/rechazados + qué pidió → candidatos con `because_mal_id`); BSP manda ids y recibe ids, sin cuentas del lado de Pablo. **La AI de BSP elige de esa lista y escribe el porqué en español**: chat, vitrina y porqué siguen siendo nuestros. Cualquier mejora al motor se pide a Pablo, nunca se parcha aquí — si no, la comparación vuelve a mezclar variables.
