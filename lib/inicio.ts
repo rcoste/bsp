@@ -182,13 +182,15 @@ async function recordar(
     return { modo: "reposo", tarjetas: dejadas, ancla: "Te dejé esto", saludo };
   }
 
-  // Sin nada que recordar en la vitrina, populares; el saludo SÍ demuestra
-  // memoria y no promete nada que no esté en pantalla.
-  const populares = await paraArranque(6);
+  // Sin nada que recordar en la vitrina, populares que todavía no ha marcado;
+  // el saludo SÍ demuestra memoria y no promete nada que no esté en pantalla.
+  // El encabezado dice lo que son: "Para ti" prometía algo hecho a su medida
+  // y era una muestra al azar.
+  const populares = await paraArranque(6, { sinLoDe: perfilId });
   return {
     modo: "reposo",
     tarjetas: populares.map((anime) => ({ anime, razon: "" })),
-    ancla: "Para ti",
+    ancla: "Populares",
     saludo,
   };
 }

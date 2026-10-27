@@ -169,7 +169,18 @@ describe("al volver, la vitrina enseña lo que se le dejó", () => {
     const i = await decidirInicio({ dispositivoId: VUELVE, fria: false, vaAPreguntar: false });
     assert.equal(i.modo, "reposo");
     if (i.modo !== "reposo") return;
-    assert.equal(i.ancla, "Para ti");
+    assert.equal(i.ancla, "Populares");
     assert.doesNotMatch(i.saludo, /te dejé/, "no pregunta por algo que no está en pantalla");
+  });
+
+  it("los populares de quien vuelve no traen lo que ya marcó", async () => {
+    // Death Note está entre los 40 más vistos: si el filtro fallara, tendría
+    // que asomarse en alguna de estas vueltas.
+    for (let n = 0; n < 15; n++) {
+      const i = await decidirInicio({ dispositivoId: VUELVE, fria: false, vaAPreguntar: false });
+      if (i.modo !== "reposo") return assert.fail("esperaba reposo");
+      const ids = i.tarjetas.map((t) => t.anime.id);
+      assert.ok(!ids.includes(DEATH_NOTE) && !ids.includes(FRIEREN), `ya marcados en populares: ${ids}`);
+    }
   });
 });

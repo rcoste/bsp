@@ -25,7 +25,15 @@ import {
 /** Series y películas nada más: nadie reconoce un OVA por su portada. */
 const TIPOS = ["tv", "movie"];
 
-export async function paraArranque(limite = 12): Promise<Anime[]> {
+/**
+ * `sinLoDe` (id de perfil): deja fuera las obras que esa persona ya marcó, en
+ * cualquier estado. Para quien vuelve, enseñarle de "populares" lo que ya vio
+ * se lee como que la app no lo recuerda.
+ */
+export async function paraArranque(
+  limite = 12,
+  opciones: { sinLoDe?: string } = {},
+): Promise<Anime[]> {
   const conocidos = Math.ceil(limite / 2);
 
   // Los muy conocidos salen de los 40 más vistos; los de nicho, de los
@@ -47,6 +55,14 @@ export async function paraArranque(limite = 12): Promise<Anime[]> {
          and datos->>'tipo' = any(${TIPOS})
          and coalesce(datos->>'clasificacion', '') <> all(${FUERA_DE_PRIMERA_PANTALLA})
          and coalesce(datos->>'serie', '') <> all(${OBRAS_FUERA_DE_PRIMERA_PANTALLA})
+         ${
+           opciones.sinLoDe
+             ? sql`and coalesce(datos->>'serie', anime_id::text) not in (
+                 select coalesce(m.datos->>'serie', m.anime_id::text)
+                   from listas l join catalogo_cache m on m.anime_id = l.anime_id
+                  where l.perfil_id = ${opciones.sinLoDe})`
+             : sql``
+         }
        order by coalesce(datos->>'serie', anime_id::text), (datos->>'miembros')::bigint desc
     )
     (
