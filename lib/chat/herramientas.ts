@@ -259,6 +259,9 @@ export async function actualizarLista(
   const quedo = await marcar(dispositivoId, anime.id, estado as Marca, {
     episodio: typeof episodio === "number" ? episodio : null,
     calificacion: esCalificacion(calificacion) ? calificacion : null,
+    // Lo dicho en el chat AFIRMA, no alterna: si la parrilla ya la marcó como
+    // vista, "ya vi X" la deja vista en vez de apagarla.
+    alternar: false,
   });
   void registrarEvento(dispositivoId, "marca", {
     animeId: anime.id,

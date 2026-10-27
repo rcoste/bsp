@@ -63,7 +63,13 @@ export async function marcar(
   dispositivoId: string,
   animeId: number,
   marca: Marca,
-  extras?: { episodio?: number | null; calificacion?: Calificacion | null },
+  extras?: {
+    episodio?: number | null;
+    calificacion?: Calificacion | null;
+    /** false = afirmar, no alternar: "ya la vi" dicho en el chat sobre algo ya
+     *  marcado como visto lo DEJA visto. El interruptor es solo del botón. */
+    alternar?: boolean;
+  },
 ): Promise<Entrada | null> {
   const perfilId = await idDePerfil(dispositivoId);
   await anotarActividad(dispositivoId);
@@ -87,6 +93,15 @@ export async function marcar(
   // con datos nuevos (otro episodio, una calificación) es una actualización,
   // no un des-toque: "voy en el 9" después de "voy en el 8" no borra la fila.
   if (actual?.estado === marca && episodio === null && calificacion === null) {
+    if (extras?.alternar === false) {
+      // Ya estaba así y así se queda. Pasó de verdad: la parrilla marcaba tres
+      // series como vistas, la AI las "guardaba" otra vez al leer "ya vi X, Y, Z",
+      // y el interruptor las borraba — y luego recomendaba una de ellas.
+      const [fila] = await sql<{ estado: Marca; episodio: number | null; calificacion: Calificacion | null }[]>`
+        select estado, episodio, calificacion from listas where perfil_id = ${perfilId} and anime_id = ${animeId}
+      `;
+      return { marca: fila.estado, episodio: fila.episodio, calificacion: fila.calificacion };
+    }
     await sql`delete from listas where perfil_id = ${perfilId} and anime_id = ${animeId}`;
     return null;
   }

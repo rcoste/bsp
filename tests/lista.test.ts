@@ -31,6 +31,14 @@ describe("marcar", () => {
     assert.equal(marcas[DEATH_NOTE].marca, "visto");
   });
 
+  it("afirmar (alternar: false) NO quita: 'ya vi X' dicho en el chat sobre algo visto lo deja visto", async () => {
+    await marcar(DISPOSITIVO, BEBOP, "visto");
+    const quedo = await marcar(DISPOSITIVO, BEBOP, "visto", { alternar: false });
+    assert.equal(quedo?.marca, "visto");
+    const marcas = await marcasDe(DISPOSITIVO);
+    assert.equal(marcas[BEBOP].marca, "visto");
+  });
+
   it("tocar la MISMA marca la quita — un toque de más no es permanente", async () => {
     await marcar(DISPOSITIVO, FRIEREN, "quiero_ver");
     const quedo = await marcar(DISPOSITIVO, FRIEREN, "quiero_ver");
